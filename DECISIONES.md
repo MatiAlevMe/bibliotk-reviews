@@ -1,0 +1,66 @@
+# DECISIONES.md
+
+## Requisitos ambiguos o contradictorios
+
+### 1. "Reseñas Insuficientes" vs mostrar el promedio
+
+El enunciado dice: "Un libro con menos de 3 reseñas muestra 'Reseñas Insuficientes' en lugar del promedio." Growth pide: "¿No podemos mostrar el promedio igual, aunque sea con dos reseñas?"
+
+**Decisión:** Mantuve el umbral de 3 para el top 50, pero mostré el promedio en el detalle del libro siempre. Agregué un campo `confidence` para que Growth tome decisiones informadas.
+
+### 2. Qué pasa con la reseña de un usuario baneado
+
+El enunciado dice: "Tu API debe reflejar esa decisión de forma explícita, no como efecto colateral de la implementación."
+
+**Decisión:** Las reseñas quedan con `hidden: true`. No se borran. El autor puede verlas, soporte puede verlas, el lector general no. Esto es una decisión explícita que se refleja en el esquema (campo `hidden`) y en los queries (`moderationStatus`).
+
+### 3. Ban preview sin escribir en producción
+
+El enunciado dice: "Si tu arquitectura está bien hecha esto es barato; si te sale caro, eso también es un hallazgo."
+
+**Decisión:** Calculo el impacto en memoria usando los aggregates cacheados. No toco la DB. Es O(n) donde n = reseñas del usuario, y es barato porque los promedios ya están cacheados.
+
+## Trade-offs tomados
+
+### GraphQL vs REST
+
+**Decisión:** GraphQL. La empresa parece usar GraphQL (se menciona en el contexto). Además, GraphQL permite queries más eficientes (ej: pedir solo `average` y `confidence` sin traer todo el libro).
+
+**Costo:** Más setup inicial, más complejidad en el schema. Pero la flexibilidad lo vale para un sistema con múltiples actores (autores, lectores, moderación, soporte).
+
+### Cached aggregates vs recalcular on-the-fly
+
+**Decisión:** Cached aggregates en `books` (`cached_average`, `cached_reviews_count`, `cached_non_banned_count`).
+
+**Costo:** Consistencia eventual (si el server crashea después de un review pero antes del recálculo, el promedio queda desactualizado). Mitigación: rake task `recalculate_all` como insurance.
+
+**Beneficio:** El top 50 es O(1) — un simple `ORDER BY cached_average DESC LIMIT 50`. Sin esto, sería O(n*m) donde n = libros y m = reviews por libro.
+
+### Reseñas hidden vs deleted
+
+**Decisión:** Hidden (no borradas).
+
+**Costo:** La tabla de reviews crece indefinidamente. Los queries deben filtrar por `hidden: false` siempre.
+
+**Beneficio:** Trazabilidad completa. Soporte puede ver qué pasó. El usuario puede ver que su reseña fue ocultada. No hay黑洞 de información.
+
+### Texto estático vs IA para notificaciones
+
+**Decisión:** Texto estático.
+
+**Costo:** Menos personalización. El autor recibe el mismo mensaje siempre.
+
+**Beneficio:** Predictible, auditable, sin costo de API. La IA se puede agregar después como bonus.
+
+## Qué dejaría fuera si esto saliera mañana
+
+1. **Fraud detection:** Es un nice-to-have. El sistema core (promedios, baneos, notificaciones) es lo crítico.
+2. **El seed de 500k reviews:** Es para benchmark, no para producción. En producción los datos ya existen.
+3. **Las 3 métricas de monitoreo:** Se definen pero no se implementan. En producción irían a Datadog o similar.
+
+## Qué haría distinto con una semana más
+
+1. **Background jobs para recálculo:** En lugar de recalcular en la misma transacción del review, usar Sidekiq para recalcular asincrónicamente. Esto mejora la performance de escritura.
+2. **Optimistic locking en reviews:** En lugar de `SELECT FOR UPDATE`, usar un `lock_version` para detectar conflictos sin bloquear.
+3. **Cache en Redis para el top 50:** Guardar el top 50 en Redis con TTL de 5 minutos. Esto reduce la carga a la DB.
+4. **API versioning:** Empezar con `v1/` en los queries para poder evolucionar sin romper clientes existentes.
