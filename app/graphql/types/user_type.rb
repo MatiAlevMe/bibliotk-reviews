@@ -7,7 +7,7 @@ module Types
     field :banned_at, GraphQL::Types::ISO8601DateTime, null: true
     field :ban_reason, String, null: true
     field :created_at, GraphQL::Types::ISO8601DateTime, null: false
-    field :reviews, [Types::ReviewType], null: false
+    field :reviews, [ Types::ReviewType ], null: false
 
     def reviews
       object.reviews

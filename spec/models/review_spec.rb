@@ -53,7 +53,7 @@ RSpec.describe Review, type: :model do
 
     it "rounds half up at .25 (3.25 → 3.3)" do
       # (3+3+3+4)/4 = 13/4 = 3.25 → 3.3
-      [3, 3, 3, 4].each { |r| create(:review, book: book, rating: r) }
+      [ 3, 3, 3, 4 ].each { |r| create(:review, book: book, rating: r) }
       expect(book.reload.cached_average).to eq(3.3)
     end
 

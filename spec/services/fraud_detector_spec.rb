@@ -36,7 +36,7 @@ RSpec.describe FraudDetector do
     context "with legitimate pattern" do
       before do
         # Create 10 reviews, mixed ratings, from old accounts
-        ratings = [1, 2, 3, 3, 4, 4, 4, 5, 5, 5]
+        ratings = [ 1, 2, 3, 3, 4, 4, 4, 5, 5, 5 ]
         ratings.each do |rating|
           user = create(:user, created_at: 30.days.ago)
           create(:review, book: book, rating: rating, user: user)

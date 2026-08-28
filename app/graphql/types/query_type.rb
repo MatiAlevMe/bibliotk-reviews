@@ -8,8 +8,8 @@ module Types
       context.schema.object_from_id(id, context)
     end
 
-    field :nodes, [Types::NodeType, null: true], null: true, description: "Fetches a list of objects given a list of IDs." do
-      argument :ids, [ID], required: true, description: "IDs of the objects."
+    field :nodes, [ Types::NodeType, null: true ], null: true, description: "Fetches a list of objects given a list of IDs." do
+      argument :ids, [ ID ], required: true, description: "IDs of the objects."
     end
 
     def nodes(ids:)
@@ -17,7 +17,7 @@ module Types
     end
 
     # Top N books by average rating
-    field :top_books, [Types::BookType], null: false, description: "Top books ordered by average rating" do
+    field :top_books, [ Types::BookType ], null: false, description: "Top books ordered by average rating" do
       argument :limit, Integer, required: false, default_value: 50
     end
 
@@ -35,7 +35,7 @@ module Types
     end
 
     # Reviews for a book (all, including hidden for moderation)
-    field :book_reviews, [Types::ReviewType], null: false do
+    field :book_reviews, [ Types::ReviewType ], null: false do
       argument :book_id, ID, required: true
       argument :include_hidden, Boolean, required: false, default_value: false
     end
@@ -47,7 +47,7 @@ module Types
     end
 
     # User's reviews
-    field :user_reviews, [Types::ReviewType], null: false do
+    field :user_reviews, [ Types::ReviewType ], null: false do
       argument :user_id, ID, required: true
     end
 
@@ -95,7 +95,7 @@ module Types
     end
 
     # Notifications for a user (author notifications)
-    field :notifications, [Types::ModerationNotificationType], null: false do
+    field :notifications, [ Types::ModerationNotificationType ], null: false do
       argument :user_id, ID, required: true
       argument :unread_only, Boolean, required: false, default_value: false
     end
@@ -119,7 +119,7 @@ module Types
     end
 
     # Ban audit logs
-    field :ban_logs, [Types::BanAuditLogType], null: false do
+    field :ban_logs, [ Types::BanAuditLogType ], null: false do
       argument :limit, Integer, required: false, default_value: 20
     end
 

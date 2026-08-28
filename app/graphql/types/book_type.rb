@@ -8,8 +8,8 @@ module Types
     field :cached_non_banned_count, Integer, null: false
     field :display_average, GraphQL::Types::JSON, null: false
     field :confidence, String, null: false
-    field :reviews, [Types::ReviewType], null: false
-    field :visible_reviews, [Types::ReviewType], null: false
+    field :reviews, [ Types::ReviewType ], null: false
+    field :visible_reviews, [ Types::ReviewType ], null: false
 
     def reviews
       object.reviews
