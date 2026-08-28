@@ -3,6 +3,7 @@ import type {
   BanImpact,
   Book,
   FraudCheck,
+  FraudAuthorAnomaly,
   ModerationNotification,
   ModerationStatus,
   Review,
@@ -99,6 +100,18 @@ export const api = {
         suspicious reason fiveStarRatio recentAccountsRatio totalReviews
       } }`,
       { bookId }
+    ),
+  fraudAuthorAnomaly: (authorName: string) =>
+    gql<{ fraudAuthorAnomaly: FraudAuthorAnomaly | null }>(
+      `query ($authorName: String!) {
+        fraudAuthorAnomaly(authorName: $authorName) {
+          suspicious
+          author
+          flaggedBooks
+          checkedAt
+        }
+      }`,
+      { authorName }
     ),
   banLogs: (limit = 20) =>
     gql<{ banLogs: BanAuditLog[] }>(

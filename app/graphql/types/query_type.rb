@@ -118,6 +118,15 @@ module Types
       FraudDetector.new(book).detect
     end
 
+    # Fraud author anomaly check
+    field :fraud_author_anomaly, Types::FraudAuthorAnomalyType, null: true do
+      argument :author_name, String, required: true
+    end
+
+    def fraud_author_anomaly(author_name:)
+      FraudDetector.detect_author_anomaly(author_name)
+    end
+
     # Ban audit logs
     field :ban_logs, [ Types::BanAuditLogType ], null: false do
       argument :limit, Integer, required: false, default_value: 20
