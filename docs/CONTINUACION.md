@@ -6,6 +6,59 @@ Convención de estado: `[✅ resuelto]`, `[⏳ pendiente]`, `[🟡 bajo priorida
 
 ---
 
+## 📌 Plan de ejecución completo (próximos pasos)
+
+> Estado operativo al momento de escribir: la demo actualmente **no es funcional** en este Windows porque las gems nativas de Rails (puma, psych, date, etc.) no compilan/cargan en el Ruby de Windows (`C:\Ruby33`), y Postgres no está instalado localmente. Se decidió **mover el entorno de ejecución a WSL (Ubuntu 24.04)**.
+
+### Decisiones confirmadas (28/08/2026)
+
+- **Backend y tests se corren en WSL** (Ubuntu 24.04, WSL2). Ruby 3.3.1 vía **rbenv** (ya instalado en `/home/eva2a/.rbenv`), **solo project-local** — NO se toca el global rbenv (que tiene 3.1.2).
+- **Rechazado el setup Docker dev** (`Dockerfile.dev` + `docker-compose.yml` descartados). El `Dockerfile` de producción NO se toca salvo lo ya commiteado (ARG RUBY_VERSION → 3.3.1, commit `6cc036e`).
+- **`db:reset` de la demo corre vía WSL**: `wsl -e bash -lc 'cd /home/eva2a/EVA/repos/bibliotk-reviews && bin/rails db:reset_demo'` (ya en `frontend/package.json`, commit `02333ea`).
+- **`.gitattributes`** añadido en `02333ea`: fuerza `eol=lf` para todo texto → los binstubs `bin/*` corren bien en Linux/contenedores incluso con `core.autocrlf=true` en Windows.
+- **`fraudAuthorAnomaly` (#10) se expone como query GraphQL** (visible en la demo), no solo rake.
+- **Copia del proyecto en WSL sin `.git`**: se clona limpio desde `origin` y se aplican los archivos locales no commiteados como sea necesario.
+
+### Fase A — Setup del entorno WSL (backend + tests)
+
+1. **Clonar limpio** en WSL en `/home/eva2a/EVA/repos/bibliotk-reviews` desde `git@github.com:MatiAlevMe/bibliotk-reviews.git` (SSH). WSL ya tiene `git`, `gcc`, `make`, `curl`, `nvm/node v18.20.8`.
+2. **Ruby 3.3.1 project-local**: `rbenv install 3.3.1` (compila con gcc/make). `.ruby-version` (ya = `3.3.1`) activa 3.3.1 **solo dentro** de ese folder; el global rbenv queda en 3.1.2 intacto.
+3. **PostgreSQL**: `sudo apt install postgresql`; crear rol `eva2a` con password y DBs `bibliotk_reviews_development` + `bibliotk_reviews_test`. `config/database.yml` usa `localhost`/5432 y el usuario por defecto del SO (evitar el auth `peer` de Ubuntu para TCP localhost; configurar password auth para el rol).
+4. **Dependencias + BD**: `bundle install`, `bin/rails db:create db:migrate db:seed`.
+5. **Verificar**: `bundle exec rspec` (baseline: 47 examples, 0 failures), `bin/rubocop -f github`, `bin/brakeman --no-pager`.
+
+### Fase B — Demo funcional de punta a punta
+
+- Backend en WSL: `bin/rails server -b 0.0.0.0 -p 3000` (WSL2 reenvía localhost → Windows la alcanza en `localhost:3000`).
+- Frontend en Windows (E:): `cd frontend && npm install && npm run dev` → SPA en `:5173`, proxy `/graphql → localhost:3000` ya configurado en `vite.config.ts`.
+- Reset a fábrica de BD: `cd frontend && npm run db:reset` (vía WSL).
+
+### Fase C — Fixes de código pendientes (1 commit por hito)
+
+Ver detalles completos en los puntos numerados abajo.
+
+1. **#2 + #3 — Precisión del ban preview + spec de equivalencia** (requiere migración):
+   - Migración: añadir `reviews_sum` (integer, suma exacta no redondeada) y `reviews_count_raw` a `books`. `Book#recalculate!` los mantiene en la misma `update_columns`. Regenerar y commitear `db/schema.rb`.
+   - `BanImpactAnalyzer#analyze` (`app/services/ban_impact_analyzer.rb:20`) usa `reviews_sum` en vez de `cached_average * count`.
+   - Spec en `ban_impact_analyzer_spec.rb` comparando contra "banear + recalcular" real.
+2. **#5 — Redundancia `includes(:book).joins(:book)`** (`ban_impact_analyzer.rb:9`) → `reviews.includes(:book)`.
+3. **#4 — Concurrencia**: `spec/models/concurrency_spec.rb` → rescatar `ActiveRecord::RecordNotUnique` en `t.join` o recolectar errores asertando ≤1 insert por usuario.
+4. **#10 — `fraudAuthorAnomaly`**: query GraphQL `fraudAuthorAnomaly(authorName: String!): FraudResult` en `query_type.rb` + type `FraudResult`, conectando `FraudDetector.detect_author_anomaly`. Actualizar `frontend/src/api.ts` (tipado acorde al schema) y agregar spec con caso sospechoso.
+5. **#9 — 3 métricas**: servicio `AnomalyWatcher`/`AlertingService` + rake `metrics:scan` que calcule Reviews/min, average delta, y ratio banned/total. + specs.
+
+Cada hito: correr `rspec` + `rubocop`, commit imperativo con alcance.
+
+### Fase D — Docs y CI
+
+- Actualizar `docs/CONTINUACION.md` (marcar 2,3,4,5,9,10 resueltos con commit refs; ajustar tabla de migraciones), `PLAN.md`, `PRUEBAS.md` (flujo demo WSL + `db:reset` vía wsl), `STACK.md`, `STRUCTURE.md`, `DECISIONES.md`, `PRODUCTO.md`, `AGENTS.md` (workflow WSL, postgres local, `db:reset` por wsl, quitar referencias docker dev).
+- CI ya recalibrado a Ruby 3.3.1 + actions v5 + node 22 (commit `6cc036e`); se valida al abrir PR (checks `test`, `lint`, `scan_ruby`, `frontend`).
+
+### Fase E — Push / PR
+
+- Rama feature (ej. `feat/demo-wsl-pendientes`), commits atómicos por fase, abrir PR → checks CI → merge a `main` (protegida).
+
+---
+
 ## 1. Fluir cambios a `main` (protección habilitada)
 
 **Estado:** `[📌 decisión tomada]` — ver abajo cómo hacerlo.
@@ -24,6 +77,8 @@ Convención de estado: `[✅ resuelto]`, `[⏳ pendiente]`, `[🟡 bajo priorida
    - Settings → Branches → regla de `main` → desmarcar **"Do not allow bypassing the above settings"**.
    - Con eso, como owner/admin, el bypass se aplica y podés pushear directo. (Mantener marcada la opción garantiza que ni admins salten los checks; es la opción segura por defecto.)
    - Para rewrite: `git push --force-with-lease` (el "Block force pushes" solo aplica si no tenés bypass).
+
+**Nota (28/08/2026):** el owner tiene bypass habilitado y el push directo a `main` funciona; los commits se ven "Bypassed rule violations" pero se aplican.
 
 ---
 
@@ -122,7 +177,7 @@ o usar `Review.create!` y recolectar errores explícitamente, asertando que a lo
 
 **Estado:** `[📌 decisión tomada]`
 
-**Detalle:** no se implementó un endpoint de reset porque PostgreSQL rechaza `DROP` mientras el server mantiene conexión. Se resuelve vía `npm run db:reset` (→ `bin/rails db:reset_demo`, dev/test-only). Ver `DECISIONES.md`.
+**Detalle:** no se implementó un endpoint de reset porque PostgreSQL rechaza `DROP` mientras el server mantiene conexión. Se resuelve vía `npm run db:reset` (→ `bin/rails db:reset_demo`, dev/test-only). Ver `DECISIONES.md`. **Nota (28/08/2026):** con el backend en WSL, `db:reset` de la demo corre `bin/rails db:reset_demo` dentro de WSL (ver `frontend/package.json`, commit `02333ea`).
 
 **Cómo resolverlo (si se quisiera desde UI):** endpoint que cierre conexiones activas y ejecute el reset con `pg_terminate_backend`, limitado estrictamente a `Rails.env.development?` y protegido. Riesgo operativo alto; no recomendado.
 
@@ -147,7 +202,7 @@ o usar `Review.create!` y recolectar errores explícitamente, asertando que a lo
 
 **Detalle:** `FraudDetector.detect_author_anomaly` existe como clase-método pero no está conectada a ninguna query/mutation GraphQL ni a un job con scheduler.
 
-**Cómo resolverlo:** exponer query `fraudAuthorAnomaly(authorName: String!): FraudResult` en el schema, o un rake task `fraud:scan_books` que recorra autores con `>= 2` libros. Ver `app/services/fraud_detector.rb:50`.
+**Cómo resolverlo:** exponer query `fraudAuthorAnomaly(authorName: String!): FraudResult` en el schema **y en la demo** (decisión tomada 28/08/2026: visible en la UI), conectando `FraudDetector.detect_author_anomaly`. Ver `app/services/fraud_detector.rb:50`.
 
 ---
 
