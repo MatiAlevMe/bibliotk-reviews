@@ -51,53 +51,24 @@ RSpec.describe Review, type: :model do
   describe "half-up rounding" do
     let(:book) { create(:book) }
 
-    it "rounds 3.25 to 3.3" do
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 4)
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 3)
-      # (3+4+3+3)/4 = 3.25 → 3.3
+    it "rounds half up at .25 (3.25 → 3.3)" do
+      # (3+3+3+4)/4 = 13/4 = 3.25 → 3.3
+      [3, 3, 3, 4].each { |r| create(:review, book: book, rating: r) }
       expect(book.reload.cached_average).to eq(3.3)
     end
 
-    it "rounds 3.35 to 3.4" do
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 4)
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 4)
-      # (3+4+3+4)/4 = 3.5 → no wait, 3.5 rounds to 3.5
-      # Let me recalculate: 3,4,3,4 → sum=14, count=4, avg=3.5
-      # Need a different test
-      book.recalculate!
-      # Actually 3.5 rounds to 3.5 with half-up
-      # Let me use a different example
+    it "rounds above .3 precision up (3.35 → 3.4)" do
+      # (13×3 + 7×4)/20 = 67/20 = 3.35 → 3.4
+      13.times { create(:review, book: book, rating: 3) }
+      7.times  { create(:review, book: book, rating: 4) }
+      expect(book.reload.cached_average).to eq(3.4)
     end
 
-    it "rounds 2.249 to 2.2" do
-      create(:review, book: book, rating: 2)
-      create(:review, book: book, rating: 2)
-      create(:review, book: book, rating: 3)
-      # (2+2+3)/3 = 2.333... rounds to 2.3
-      # Need to test with actual half-up edge case
-    end
-
-    it "handles exact half (3.25 → 3.3)" do
-      # 3.25 = (3+3+3+4)/4
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 4)
-      expect(book.reload.cached_average).to eq(3.3)
-    end
-
-    it "handles below half (3.24 → 3.2)" do
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 3)
-      create(:review, book: book, rating: 4)
-      create(:review, book: book, rating: 3)
-      # (3+3+3+4+3)/5 = 3.2 → 3.2
-      expect(book.reload.cached_average).to eq(3.2)
+    it "rounds below half down (2.24 → 2.2)" do
+      # (19×2 + 6×3)/25 = 56/25 = 2.24 → 2.2
+      19.times { create(:review, book: book, rating: 2) }
+      6.times  { create(:review, book: book, rating: 3) }
+      expect(book.reload.cached_average).to eq(2.2)
     end
   end
 end
