@@ -41,10 +41,16 @@ RSpec.describe "Concurrency", type: :model do
             book: book,
             rating: 4
           )
+        rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+          nil
         end
       end
 
-      threads.each(&:join)
+      threads.each do |t|
+        t.join
+      rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+        nil
+      end
 
       expect(user.reviews.where(book: book).count).to eq(1)
     end
