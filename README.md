@@ -166,8 +166,40 @@ mutation {
 }
 ```
 
+## Frontend DEMO
+
+Hay un demo interactivo en `frontend/` (SPA estática con **Vite + TypeScript + Vitest**) para switchear de rol y probar cada feature con cambios en la BD.
+
+```bash
+cd frontend
+npm install
+npm run dev        # dev server en :5173, proxy a :3000
+```
+
+- **Role switching:** elegís Admin / Autor / Lector y ejecutás las acciones de ese rol.
+- **Top 50, Libro (CRUD reseñas + fraud check), Moderación (ban preview/ban/unban/auditoría), Panel autor (notificaciones + ocultas), Sistema (reset BD).**
+- Validación previa a navegador: `npm run typecheck` (tsc) y `npm test` (vitest).
+
+## Ambientes y reset de BD
+
+| Ambiente | Dónde | Reset a fábrica | Demo |
+|----------|-------|------------------|------|
+| development | `localhost:3000` | `bin/rails db:reset_demo` | sí |
+| test (CI/CD) | GitHub Actions, BD por ejecución | automático cada run | no |
+| production | deploy futuro | no | no |
+
+El reset de BD a fábrica en dev: `bin/rails db:reset_demo` (o `cd frontend && npm run db:reset`) — drop + create + migrate + seed. Solo dev/test; aborta en producción.
+
+## CI/CD (GitHub Actions)
+
+Jobs: `scan_ruby` (brakeman), `lint` (rubocop), `test` (RSpec + PostgreSQL service, BD creada de cero en cada ejecución), `frontend` (typecheck + vitest). `main` está protegida (status checks requeridos).
+
 ## Documentación
 
-- [docs/PLAN.md](docs/PLAN.md) — Plan de implementación
+- [docs/PLAN.md](docs/PLAN.md) — Plan de implementación + hitos
+- [docs/STACK.md](docs/STACK.md) — Catálogo del stack tecnológico
+- [docs/STRUCTURE.md](docs/STRUCTURE.md) — Estructura del dominio
+- [docs/PRUEBAS.md](docs/PRUEBAS.md) — Guía de pruebas del sistema
 - [DECISIONES.md](DECISIONES.md) — Trade-offs y decisiones técnicas
 - [PRODUCTO.md](PRODUCTO.md) — Decisiones de producto frente a los 5 pains
+- [AGENTS.md](AGENTS.md) — Convenciones operativas

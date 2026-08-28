@@ -4,6 +4,46 @@
 
 Reconstrucción del motor de calificación de **Bibliotk**, una plataforma de reseñas de libros. El sistema debe calcular promedios correctamente, manejar baneos retroactivos, y resistir concurrencia masiva — todo exponiendo una API GraphQL.
 
+## Convención de trabajo
+
+**Un commit por cada actualización de código importante.** Cada feature/fix/refactor se commitea en `main` de forma atómica, con mensaje imperativo en inglés y alcance claro (`ci:`, `feat(frontend):`, `fix:`, etc.). No se amontonan cambios sin relación en un mismo commit.
+
+## Hitos del plan (checklist)
+
+Estado de ejecución. Los hitos marcados están implementados; los hallazgos quedan anotados en **Finding / Pendiente**.
+
+### Hito 1 — Motor de reseñas (✅ completado)
+- [x] Modelos: `User`, `Book`, `Review`, `BanAuditLog`, `ModerationNotification`
+- [x] Promedios cacheados + recálculo transaccional (`SELECT FOR UPDATE`)
+- [x] Redondeo half-up y umbral de 3 reseñas ("Insuficientes")
+- [x] Baneo/desbaneo retroactivo con notificación al autor
+- [x] Grading de reseñas ocultas (`hidden: true`)
+- [x] GraphQL queries + mutations + servicios (`BanImpactAnalyzer`, `FraudDetector`)
+- [x] Tests RSpec (modelos, servicios, concurrencia, unicidad, ban preview)
+
+### Hito 2 — Infraestructura y CI/CD (✅ completado)
+- [x] Gemfile: agregadas `brakeman` y `rubocop-rails-omakase` (arregla jobs `lint`/`scan_ruby`)
+- [x] `ci.yml`: jobs `scan_ruby`, `lint`, `test` (PostgreSQL service), `frontend`
+- [x] BD de test determinística (se recrea de cero en cada ejecución)
+- [x] Rake task `db:reset_demo` (dev/test-only) + `db:seed:recalculate_all`
+- [x] Protección de `main` en GitHub (status checks: test, lint, scan_ruby, frontend)
+
+### Hito 3 — Frontend DEMO (✅ completado)
+- [x] SPA estática `frontend/` (Vite + TypeScript + Vitest)
+- [x] Rol switching (Admin/Autor/Lector) + vistas por feature
+- [x] Vista Sistema con reset de BD a fábrica (dev)
+- [x] Typecheck (`tsc --noEmit`) + tests de CI del frontend
+
+### Hito 4 — Documentación (✅ completado)
+- [x] `docs/STACK.md` — catálogo del stack
+- [x] `docs/STRUCTURE.md` — estructura del dominio
+- [x] `README.md`, `docs/PRUEBAS.md`, `DECISIONES.md`, `PRODUCTO.md` actualizados
+- [x] `AGENTS.md` — convenciones operativas
+
+### Finding / Pendiente
+- La **demo no genera el libro de 500k reseñas** desde la UI (requiere `db:seed:large_scale`, ver Hito 1 bonus). El benchmark se corre por CLI.
+- El **reset de BD desde la UI** no usa un endpoint en el server (no se puede `DROP` la BD a la que el server está conectado); se hace vía `npm run db:reset` (CLI). Ver `DECISIONES.md`.
+
 ## Stack
 
 | Capa | Tecnología | Justificación |
@@ -227,17 +267,21 @@ end
 bibliotk-reviews/
 ├── app/
 │   ├── graphql/        # Schema, types, mutations
-│   ├── models/         # User, Book, Review, BanAuditLog
-│   ├── services/       # BanImpactAnalyzer, FraudDetector, ReviewCalculator
+│   ├── models/         # User, Book, Review, BanAuditLog, ModerationNotification
+│   ├── services/       # BanImpactAnalyzer, FraudDetector
 │   └── controllers/    # GraphQL controller
 ├── spec/               # RSpec tests
+├── frontend/           # Demo SPA (Vite + TypeScript + Vitest)
 ├── docs/
-│   ├── PLAN.md         # Este documento
-│   ├── DECISIONES.md   # Trade-offs y decisiones
-│   ├── PRODUCTO.md     # Respuesta a los 5 pains
-│   └── Prueba Product builder.pdf
-├── db/seeds.rb         # Auto-generated seeds
-├── lib/tasks/          # Rake tasks
+│   ├── PLAN.md         # Este documento (plan + hitos)
+│   ├── STACK.md        # Catálogo del stack
+│   ├── STRUCTURE.md    # Estructura del dominio
+│   ├── PRUEBAS.md      # Guía de pruebas
+│   └── Prueba Product builder.pdf          # Brief del challenge
+├── db/seeds.rb         # Seed determinístico
+├── lib/tasks/          # Rake tasks (seeds, recalculate_all, reset_demo)
+├── .github/workflows/  # CI (scan_ruby, lint, test, frontend)
+├── AGENTS.md
 ├── DECISIONES.md
 ├── PRODUCTO.md
 └── README.md

@@ -52,6 +52,56 @@ El enunciado dice: "Si tu arquitectura está bien hecha esto es barato; si te sa
 
 **Beneficio:** Predictible, auditable, sin costo de API. La IA se puede agregar después como bonus.
 
+## Decisiones de ingeniería / entrega
+
+### TypeScript vs JavaScript para el demo
+
+**Decisión:** TypeScript (Vite + TS + Vitest).
+
+**Costo:** Setup de tooling (tsconfig, tipos). 
+
+**Beneficio:** Tipado estricto de las respuestas GraphQL y del estado; validación de tipos en tiempo de compilación (`tsc --noEmit`) sin abrir el navegador, y tests unitarios en runtime con Vitest.
+
+### SPA estática vs vistas Rails para el demo
+
+**Decisión:** SPA estática en `frontend/`, separada de la app API-only.
+
+**Costo:** Se sirve aparte (Vite dev/build). No reutiliza el pipeline de Rails.
+
+**Beneficio:** No obliga a sacar la app de `api_only`, ni a re-inventar assets. El demo es 100% estático y consume GraphQL por HTTP (CORS abierto).
+
+### Reset de BD solo dev/test (nunca en producción)
+
+**Decisión:** `db:reset_demo` aborta si `Rails.env.production?`. La demo y el reset viven solo en development.
+
+**Costo:** No hay forma de regenerar la BD en producción (a propósito).
+
+**Beneficio:** Evita borrar datos reales por accidente. En dev podés destruir/reconstruir sin miedo; en test la BD se recrea automáticamente.
+
+### CI determinístico: BD efímera por ejecución
+
+**Decisión:** El job `test` de CI crea la BD desde cero en cada ejecución (`db:create` + `db:schema:load` + `db:seed`) antes de correr RSpec.
+
+**Costo:** Cada run re-ejecuta el setup de BD (~segundos).
+
+**Beneficio:** Una prueba que borra datos no contamina la ejecución siguiente. Evita "falsos errores" por estado residual (ej: borré todo en una prueba y la siguiente falla al intentar borrar algo que ya no existe).
+
+### Gems brakeman + rubocop declaradas en el Gemfile
+
+**Decisión:** Agregar `brakeman` y `rubocop-rails-omakase` al grupo `:development, :test`.
+
+**Costo:** Ninguno real; son dev-only.
+
+**Beneficio:** Los jobs de CI `scan_ruby` y `lint` fallaban porque los binstubs `bin/brakeman`/`bin/rubocop` hacían `bundler/setup` + `Gem.bin_path` de gems que no estaban en el bundle (`Gem::MissingSpecError`). Este fallo era pre-existente (no culpa del bump de `actions/checkout` de dependabot).
+
+### Reset de BD desde la DEMO: por CLI, no endpoint del server
+
+**Decisión:** El reset se hace vía `npm run db:reset` (o `bin/rails db:reset_demo`) desde terminal, no desde un botón que ejecuta el `DROP` dentro del server.
+
+**Costo:** Más fricción que un botón (hay que ir a la terminal).
+
+**Beneficio:** `db:drop` no puede caerse con la BD a la que el server Rails está conectado (PostgreSQL rechaza `DROP` con conexiones activas). Correrlo como proceso CLI es determinístico y seguro. La vista Sistema del demo muestra el comando y un botón de copiar.
+
 ## Qué dejaría fuera si esto saliera mañana
 
 1. **Fraud detection:** Es un nice-to-have. El sistema core (promedios, baneos, notificaciones) es lo crítico.
