@@ -4,9 +4,8 @@ class BanImpactAnalyzer
   def initialize(user)
     @user = user
   end
-
   def analyze
-    reviews = user.reviews.includes(:book).joins(:book)
+    reviews = user.reviews.includes(:book)
 
     books_affected = reviews.map do |review|
       book = review.book
