@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:reset": "cd .. && bin/rails db:reset_demo"
+    "db:reset": "wsl -e bash -lc 'cd /home/eva2a/EVA/repos/bibliotk-reviews && bin/rails db:reset_demo'"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
