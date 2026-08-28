@@ -34,5 +34,3 @@ group :development, :test do
   gem "brakeman"
   gem "rubocop-rails-omakase"
 end
-
-

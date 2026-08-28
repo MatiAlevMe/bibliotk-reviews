@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_27_053322) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_28_211154) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -34,6 +34,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_27_053322) do
     t.integer "cached_non_banned_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "reviews_sum", default: 0, null: false
+    t.integer "reviews_count_raw", default: 0, null: false
     t.index ["author_name"], name: "index_books_on_author_name"
     t.index ["cached_average"], name: "index_books_on_cached_average", order: :desc
   end

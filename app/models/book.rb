@@ -13,13 +13,19 @@ class Book < ApplicationRecord
     stats = reviews
       .joins(:user)
       .where(users: { banned: false }, reviews: { hidden: false })
-      .pick(Arel.sql("ROUND(AVG(rating)::numeric, 1)"), Arel.sql("COUNT(*)::int"))
+      .pick(
+        Arel.sql("ROUND(AVG(rating)::numeric, 1)"),
+        Arel.sql("COUNT(*)::int"),
+        Arel.sql("COALESCE(SUM(rating), 0)::int")
+      )
 
-    avg, count = stats
+    avg, count, sum = stats
     update_columns(
       cached_average: avg || 0.0,
       cached_reviews_count: reviews.count,
-      cached_non_banned_count: count || 0
+      cached_non_banned_count: count || 0,
+      reviews_sum: sum || 0,
+      reviews_count_raw: count || 0
     )
   end
 

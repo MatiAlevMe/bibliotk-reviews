@@ -24,7 +24,7 @@ development:
   <<: *default
   database: bibliotk_reviews_development
   host: localhost
-  port: 5432
+  port: <%= ENV.fetch("PGPORT", 5433) %>
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
@@ -33,7 +33,7 @@ test:
   <<: *default
   database: bibliotk_reviews_test
   host: localhost
-  port: 5432
+  port: <%= ENV.fetch("PGPORT", 5433) %>
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is

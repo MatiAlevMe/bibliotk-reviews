@@ -37,5 +37,18 @@ RSpec.describe BanImpactAnalyzer do
         result
       }.not_to change { book1.reload.cached_average }
     end
+
+    it "matches the result of actually banning and recalculating" do
+      preview = result
+      user.ban!(reason: "spec ban")
+      book1.reload
+      book2.reload
+
+      b1_proj = preview[:details].find { |d| d[:book_id] == book1.id }[:projected_average]
+      b2_proj = preview[:details].find { |d| d[:book_id] == book2.id }[:projected_average]
+
+      expect(book1.cached_average.to_f).to eq(b1_proj)
+      expect(book2.cached_average.to_f).to eq(b2_proj)
+    end
   end
 end
