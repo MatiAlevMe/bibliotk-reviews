@@ -33,20 +33,18 @@ Convención de estado: `[✅ resuelto]`, `[⏳ pendiente]`, `[🟡 bajo priorida
 - Frontend en Windows (E:): `cd frontend && npm install && npm run dev` → SPA en `:5173`, proxy `/graphql → localhost:3000` ya configurado en `vite.config.ts`.
 - Reset a fábrica de BD: `cd frontend && npm run db:reset` (vía WSL).
 
-### Fase C — Fixes de código pendientes (1 commit por hito)
+### Fase C — Fixes de código completados (✅ resuelto)
 
-Ver detalles completos en los puntos numerados abajo.
+1. **#2 + #3 — Precisión del ban preview + spec de equivalencia** (`ad25155`):
+   - Migración: `AddReviewsSumAndCountRawToBooks` añade `reviews_sum` y `reviews_count_raw` a `books`. `Book#recalculate!` los mantiene en `update_columns`. `db/schema.rb` regenerado y commiteado.
+   - `BanImpactAnalyzer#analyze` usa `reviews_sum` exacto.
+   - Spec de equivalencia añadido en `ban_impact_analyzer_spec.rb` comparando con banear y recalcular real.
+2. **#5 — Redundancia `includes(:book).joins(:book)`** (`f0e7150`): simplificado a `reviews.includes(:book)`.
+3. **#4 — Concurrencia**: `spec/models/concurrency_spec.rb` (`b2e3e47`): rescata `ActiveRecord::RecordNotUnique` en los threads para evitar excepciones no controladas por el índice único concurrente.
+4. **#10 — `fraudAuthorAnomaly`** (`c764353`): expuesta query GraphQL `fraudAuthorAnomaly(authorName: String!)` con `Types::FraudAuthorAnomalyType`, integrado en `frontend/src/api.ts`, vista de moderación y spec de request.
+5. **#9 — 3 métricas de anomalías** (`7229545`): servicio `AnomalyWatcher`, rake task `metrics:scan` y suite de specs.
 
-1. **#2 + #3 — Precisión del ban preview + spec de equivalencia** (requiere migración):
-   - Migración: añadir `reviews_sum` (integer, suma exacta no redondeada) y `reviews_count_raw` a `books`. `Book#recalculate!` los mantiene en la misma `update_columns`. Regenerar y commitear `db/schema.rb`.
-   - `BanImpactAnalyzer#analyze` (`app/services/ban_impact_analyzer.rb:20`) usa `reviews_sum` en vez de `cached_average * count`.
-   - Spec en `ban_impact_analyzer_spec.rb` comparando contra "banear + recalcular" real.
-2. **#5 — Redundancia `includes(:book).joins(:book)`** (`ban_impact_analyzer.rb:9`) → `reviews.includes(:book)`.
-3. **#4 — Concurrencia**: `spec/models/concurrency_spec.rb` → rescatar `ActiveRecord::RecordNotUnique` en `t.join` o recolectar errores asertando ≤1 insert por usuario.
-4. **#10 — `fraudAuthorAnomaly`**: query GraphQL `fraudAuthorAnomaly(authorName: String!): FraudResult` en `query_type.rb` + type `FraudResult`, conectando `FraudDetector.detect_author_anomaly`. Actualizar `frontend/src/api.ts` (tipado acorde al schema) y agregar spec con caso sospechoso.
-5. **#9 — 3 métricas**: servicio `AnomalyWatcher`/`AlertingService` + rake `metrics:scan` que calcule Reviews/min, average delta, y ratio banned/total. + specs.
-
-Cada hito: correr `rspec` + `rubocop`, commit imperativo con alcance.
+Cada hito ejecutado con un commit atómico, con `rspec` (55 examples, 0 failures) y `rubocop` (0 offenses).
 
 ### Fase D — Docs y CI
 
@@ -83,126 +81,68 @@ Cada hito: correr `rspec` + `rubocop`, commit imperativo con alcance.
 ---
 
 ## 2. Precisión del ban preview (BanImpactAnalyzer)
-
-**Estado:** `[⏳ pendiente]`
-
+ 
+**Estado:** `[✅ resuelto]` — commit `ad25155`
+ 
 **Bug/limitación:** `BanImpactAnalyzer#analyze` reconstruye el total desde `cached_average`, que ya está **redondeado a 1 decimal**. Por eso el promedio proyectado puede desviarse ±0.1 respecto al resultado real de banear y recalcular.
-
-Ejemplo: `cached_average = 3.3`, `cached_non_banned_count = 10` → total asumido `3.3 * 10 = 33`, cuando el total real sin redondear pudo ser `33.4`.
-
-**Archivo:** `app/services/ban_impact_analyzer.rb:20-21`
-
-**Cómo resolverlo (opciones):**
-- **A (recomendado):** guardar además estadísticas en precisión completa en `books` — columnas `reviews_sum` y/o `reviews_count_raw` (no redondeadas). El preview usa la suma exacta:
-  ```ruby
-  total_without = book.reviews_sum - review.rating
-  projected_avg = (total_without.to_f / new_count).round(1)
-  ```
-  `recalculate!` mantiene `reviews_sum` en la misma `update_columns`.
-- **B (sin migración):** en vez de usar agregados cacheados, el preview calcula la suma real consultando la BD (más caro, requiere contar reseñas visibles).
-
-**Verificación:** agregar spec que compare `BanImpactAnalyzer` contra "banear y recalcular" de verdad para el mismo set de datos.
-
+ 
 ---
-
+ 
 ## 3. Spec del ban preview no verifica equivalencia
-
-**Estado:** `[⏳ pendiente]`
-
-**Brecha:** el brief exige *"Ban preview: resultado coincide con banear y recalcular"*, pero `spec/services/ban_impact_analyzer_spec.rb` solo comprueba que no modifica la BD y que devuelve los campos — **no** que la proyección coincida con el ban real.
-
-**Cómo resolverlo:**
-```ruby
-it "matches the result of actually banning and recalculating" do
-  preview = described_class.new(user).analyze
-  user.ban!(reason: "spec")
-  book1.reload
-  expect(book1.cached_average).to eq(preview[:details]
-    .find { |d| d[:book_id] == book1.id }[:projected_average])
-end
-```
-Cuidado: con el fix del punto 2 este test pasa; con el código actual puede fallar por el redondeo (±0.1).
-
+ 
+**Estado:** `[✅ resuelto]` — commit `ad25155`
+ 
+**Brecha:** el brief exige *"Ban preview: resultado coincide con banear y recalcular"*. Se agregó spec en `spec/services/ban_impact_analyzer_spec.rb` que valida que `projected_average` coincide con `user.ban!` y `recalculate!`.
+ 
 ---
-
+ 
 ## 4. Ruido en el spec de concurrencia
-
-**Estado:** `[🟡 bajo prioridad]`
-
-**Detalle:** `spec/models/concurrency_spec.rb` lanza 200 threads con `Review.create` sin rescatar. En carrera, el **unique index** `(user_id, book_id)` puede lanzar `ActiveRecord::RecordNotUnique` en algún thread (la validación de modelo no protege ante races). Como los threads no se inspeccionan, el test pasa pero "traga" excepciones.
-
-**Impacto:** bajo — el test valida el invariante correcto, pero es frágil/sucio.
-
-**Cómo resolverlo:**
-```ruby
-threads.each do |t|
-  begin; t.join; rescue ActiveRecord::RecordNotUnique => e ; end
-end
-```
-o usar `Review.create!` y recolectar errores explícitamente, asertando que a lo sumo 1 insert del mismo usuario tuvo éxito.
-
+ 
+**Estado:** `[✅ resuelto]` — commit `b2e3e47`
+ 
+**Detalle:** `spec/models/concurrency_spec.rb` rescata `ActiveRecord::RecordNotUnique` y `ActiveRecord::RecordInvalid` de manera explícita y limpia.
+ 
 ---
-
-## 5. Redundancia `includes(:book).joins(:book)` (resuelto en parte)
-
-**Estado:** `[🟡 bajo prioridad]`
-
-**Detalle:** en `app/services/ban_impact_analyzer.rb:9` se combina `reviews.includes(:book).joins(:book)`. `joins` ya carga los libros; `includes` es redundante y puede impedir el eager-load efectivo al combinarse.
-
-**Cómo resolverlo:** usar solo `reviews.joins(:book).includes(:book)` (eager + inner join) o directamente `reviews.includes(:book)`. Es cosmético; no afecta resultados.
-
+ 
+## 5. Redundancia `includes(:book).joins(:book)`
+ 
+**Estado:** `[✅ resuelto]` — commit `f0e7150`
+ 
+**Detalle:** en `app/services/ban_impact_analyzer.rb` se simplificó a `reviews.includes(:book)`.
+ 
 ---
-
+ 
 ## 6. Configuración manual de GitHub (no automatizable)
-
+ 
 **Estado:** `[📌 decisión tomada]`
-
-**Detalle:** la protección de `main` y el default `RUBY_VERSION: 3.1.2` (via `vars.RUBY_VERSION` en `ci.yml`) dependen de configuración en GitHub (branch protection rules, repository variables). No se puede commitear.
-
-**Cómo resolverlo:** documentado en `AGENTS.md` (pasos de Settings → Branches). Si querés Rails más nuevo (p.ej. 7.2, el de la app), setear `vars.RUBY_VERSION` en el repo a la versión real del proyecto; ver `ci.yml:16`.
-
+ 
 ---
-
+ 
 ## 7. Demo: libro de 500k reseñas no se genera desde la UI
-
+ 
 **Estado:** `[📌 decisión tomada]`
-
-**Detalle:** el benchmark de 500k (`db:seed:large_scale`) se corre por CLI; la UI del demo no lo dispara.
-
-**Cómo resolverlo:** no es un bug, es una decisión. Si se quisiera: un job/rake invocable desde la UI **solo en dev**, o un endpoint con flag de entorno que corra el batch de forma asíncrona. Requiere evaluación de tiempo de ejecución.
-
+ 
 ---
-
+ 
 ## 8. Reset de BD desde la UI
-
+ 
 **Estado:** `[📌 decisión tomada]`
-
-**Detalle:** no se implementó un endpoint de reset porque PostgreSQL rechaza `DROP` mientras el server mantiene conexión. Se resuelve vía `npm run db:reset` (→ `bin/rails db:reset_demo`, dev/test-only). Ver `DECISIONES.md`. **Nota (28/08/2026):** con el backend en WSL, `db:reset` de la demo corre `bin/rails db:reset_demo` dentro de WSL (ver `frontend/package.json`, commit `02333ea`).
-
-**Cómo resolverlo (si se quisiera desde UI):** endpoint que cierre conexiones activas y ejecute el reset con `pg_terminate_backend`, limitado estrictamente a `Rails.env.development?` y protegido. Riesgo operativo alto; no recomendado.
-
+ 
 ---
-
-## 9. Métricas "Que no se vuelva a repetir" (no implementadas)
-
-**Estado:** `[⏳ pendiente]`
-
-**Detalle:** en `PRODUCTO.md`/`PLAN.md` se definieron 3 métricas pero no se implementaron:
-1. **Reviews/min por libro** — alerta si >50 en 1 hora → Moderación
-2. **Average delta por libro** — alerta si cambia >1.0 en 24h → Moderación
-3. **Ratio banned/total reviewers** — alerta si >5% en 7 días → Growth
-
-**Cómo resolverlo:** un servicio `AnomalyWatcher`/`AlertingService` que corra por rake/scheduled job y compare contra la base. Datos disponibles: `Reviews` por `created_at`, `ModerationNotification.previous_average`/`new_average`, y conteo de baneados.
-
+ 
+## 9. Métricas "Que no se vuelva a repetir"
+ 
+**Estado:** `[✅ resuelto]` — commit `7229545`
+ 
+**Detalle:** Implementado servicio `AnomalyWatcher` y rake `metrics:scan` para los 3 monitoreos (reviews/min >50 en 1h, average delta >1.0 en 24h, y ratio de baneados >5% en 7 días).
+ 
 ---
-
-## 10. FraudDetector: anomalía de autor no expuesta
-
-**Estado:** `[🟡 bajo prioridad]`
-
-**Detalle:** `FraudDetector.detect_author_anomaly` existe como clase-método pero no está conectada a ninguna query/mutation GraphQL ni a un job con scheduler.
-
-**Cómo resolverlo:** exponer query `fraudAuthorAnomaly(authorName: String!): FraudResult` en el schema **y en la demo** (decisión tomada 28/08/2026: visible en la UI), conectando `FraudDetector.detect_author_anomaly`. Ver `app/services/fraud_detector.rb:50`.
+ 
+## 10. FraudDetector: anomalía de autor expuesta
+ 
+**Estado:** `[✅ resuelto]` — commit `c764353`
+ 
+**Detalle:** Query `fraudAuthorAnomaly(authorName: String!)` expuesta en `Types::QueryType`, soportada en el frontend demo (vista Moderación) y con tests en RSpec.
 
 ---
 

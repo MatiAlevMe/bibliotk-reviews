@@ -14,26 +14,27 @@ Documento maestro de convenciones operativas para agentes y colaboradores de **B
 ## Comandos
 
 ```bash
-# Backend
+# Backend (en WSL)
 bundle install
 bin/rails db:create db:migrate
 bin/rails db:seed
 bin/rails db:reset_demo          # dev/test solamente (aborta en producción)
 bin/rails db:seed:large_scale    # benchmark 500k reviews
 bin/rails db:seed:recalculate_all
+bin/rake metrics:scan            # escaneo de anomalías y métricas
 
 # Tests / lint / security
 bundle exec rspec
 bin/rubocop -f github
 bin/brakeman --no-pager
 
-# Frontend demo
+# Frontend demo (en Windows o WSL)
 cd frontend
 npm install
 npm run dev          # dev server con proxy a :3000
 npm run typecheck    # tsc --noEmit
 npm test             # vitest
-npm run db:reset     # ejecuta bin/rails db:reset_demo
+npm run db:reset     # ejecuta bin/rails db:reset_demo en WSL
 ```
 
 ## Reglas importantes

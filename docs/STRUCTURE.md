@@ -40,6 +40,7 @@ Tablas clave del dominio:
 | 2026-08-27 | `20260827053317_create_reviews.rb` | Tabla reviews |
 | 2026-08-27 | `20260827053320_create_ban_audit_logs.rb` | Tabla ban_audit_logs |
 | 2026-08-27 | `20260827053322_create_moderation_notifications.rb` | Tabla moderation_notifications |
+| 2026-08-28 | `20260828211154_add_reviews_sum_and_count_raw_to_books.rb` | Columnas reviews_sum y reviews_count_raw |
 
 ## GraphQL Schema (endpoints)
 
@@ -59,6 +60,7 @@ Tablas clave del dominio:
 | `moderationStatus(bookId)` | `moderation_status` | Reseñas ocultas + motivo (autor/soporte) |
 | `notifications(userId, unreadOnly)` | `notifications` | Notificaciones del autor |
 | `fraudCheck(bookId)` | `fraud_check` | Detección de patrones anómalos |
+| `fraudAuthorAnomaly(authorName)` | `fraud_author_anomaly` | Detección de anomalías de autor |
 | `banLogs(limit)` | `ban_logs` | Auditoría de baneos |
 
 ### Mutations
@@ -92,8 +94,9 @@ Tablas clave del dominio:
 
 | Servicio | Propósito |
 |----------|-----------|
-| `app/services/ban_impact_analyzer.rb` | Calcula en memoria el impacto de banear (O(n) sobre reseñas, promedios cacheados) |
+| `app/services/ban_impact_analyzer.rb` | Calcula en memoria el impacto de banear (O(n) sobre reseñas, suma exacta) |
 | `app/services/fraud_detector.rb` | Detecta anomalías (ratio 5★, cuentas recientes) |
+| `app/services/anomaly_watcher.rb` | Monitoreo de anomalías de ráfagas, deltas 24h y ratio de baneos |
 
 ## Rake Tasks
 
@@ -103,6 +106,7 @@ Tablas clave del dominio:
 | `db:seed:large_scale` | Libro con 500.000 reseñas (bulk insert, benchmark) |
 | `db:seed:recalculate_all` | Recalcula todos los promedios desde cero (backfill/insurance) |
 | `db:reset_demo` | Drop + create + migrate + seed. **Solo dev/test** (aborta en producción) |
+| `metrics:scan` | Escaneo de métricas y alertas del sistema |
 
 ## Frontend DEMO (`frontend/`)
 
