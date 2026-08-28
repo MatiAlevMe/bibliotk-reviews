@@ -40,15 +40,18 @@ Estado de ejecución. Los hitos marcados están implementados; los hallazgos que
 - [x] `README.md`, `docs/PRUEBAS.md`, `DECISIONES.md`, `PRODUCTO.md` actualizados
 - [x] `AGENTS.md` — convenciones operativas
 
-### Finding / Pendiente
-> Inventario completo, prioridades y cómo resolver cada pendiente/bug en **[docs/CONTINUACION.md](CONTINUACION.md)**. Resumen de lo más relevante:
+### Hito 5 — Calidad, Precisión y Alertas (✅ completado)
+- [x] Precisión exacta en ban preview (`reviews_sum` / `reviews_count_raw`)
+- [x] Spec de equivalencia en `BanImpactAnalyzer` (compara con banear y recalcular real)
+- [x] Manejo de carreras en `concurrency_spec` (`ActiveRecord::RecordNotUnique`)
+- [x] Redundancia `includes(:book)` simplificada
+- [x] Query GraphQL `fraudAuthorAnomaly` y visualización en demo UI
+- [x] Servicio `AnomalyWatcher`, rake `metrics:scan` y specs de alertas (3 métricas de producto)
 
-- **Precisión del ban preview:** `BanImpactAnalyzer` usa `cached_average` (redondeado) y puede desviarse ±0.1 vs. banear de verdad. Fix propuesto: guardar suma exacta en `books`.
-- **Spec ban preview no verifica equivalencia** con banear+recalcular (requisito del brief) — falta agregar ese test.
-- **Concurrencia looser:** el spec de 200 threads puede tragar `RecordNotUnique` del unique index.
+### Finding / Pendiente
+> Inventario completo y registro histórico en **[docs/CONTINUACION.md](CONTINUACION.md)**.
 - La **demo no genera el libro de 500k reseñas** desde la UI (requiere `db:seed:large_scale`); el benchmark se corre por CLI.
-- El **reset de BD desde la UI** no usa endpoint (no se puede `DROP` con el server conectado); se hace vía `npm run db:reset` (CLI). Ver `DECISIONES.md`.
-- **3 métricas "que no se vuelva a repetir"** definidas en PRODUCTO pero no implementadas.
+- El **reset de BD desde la UI** no usa endpoint (no se puede `DROP` con el server conectado); se hace vía `npm run db:reset` (CLI dentro de WSL). Ver `DECISIONES.md`.
 
 ## Stack
 

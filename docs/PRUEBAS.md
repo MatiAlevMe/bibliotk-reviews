@@ -162,16 +162,40 @@ Verificar que los promedios volvieron al valor anterior.
 ---
 
 ## Prueba 8: Fraud check
-
+ 
 Verificar detección de patrones sospechosos.
-
+ 
 ```bash
 curl -s -X POST http://localhost:3000/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{ fraudCheck(bookId:1) { suspicious reason fiveStarRatio recentAccountsRatio } }"}' | jq
 ```
-
+ 
 **Esperado:** `suspicious: false` con datos normales.
+ 
+---
+ 
+## Prueba 8b: Anomalía por autor (FraudAuthorAnomaly)
+ 
+Verificar detección de patrones sospechosos para todos los libros de un autor.
+ 
+```bash
+curl -s -X POST http://localhost:3000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ fraudAuthorAnomaly(authorName:\"Gabriel García Márquez\") { suspicious author flaggedBooks checkedAt } }"}' | jq
+```
+ 
+**Esperado:** Reporte del autor con `suspicious: false/true`.
+ 
+---
+ 
+## Prueba 8c: Escaneo de anomalías y métricas
+ 
+```bash
+bin/rake metrics:scan
+```
+ 
+**Esperado:** Resumen de ráfagas (>50/hora), deltas de promedios (>1.0 en 24h) y ratio de usuarios baneados en 7 días.
 
 ---
 

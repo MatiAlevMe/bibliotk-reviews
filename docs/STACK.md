@@ -6,7 +6,7 @@ Catálogo completo del stack de **Bibliotk Reviews** (backend + frontend demo + 
 
 | Capa | Tecnología | Versión | Propósito |
 |------|-----------|---------|-----------|
-| Lenguaje | Ruby | 3.1.2 (`.ruby-version`) | Runtime |
+| Lenguaje | Ruby | 3.3.1 (`.ruby-version`) | Runtime |
 | Framework | Rails | 7.2 (API-only) | Servidor de la API |
 | Base de datos | PostgreSQL | 16+ | Persistencia, transacciones, `SELECT FOR UPDATE` |
 | API | GraphQL (gem `graphql`) | ~2.6 | Contrato de queries/mutations |
@@ -65,6 +65,7 @@ El demo queda en `frontend/`, es **100% estático** (no toca el stack Rails) y s
 | `db:seed:large_scale` | Libro con 500.000 reseñas (benchmark, bulk insert) |
 | `db:seed:recalculate_all` | Recalcula todos los `cached_average` desde cero (backfill/insurance) |
 | `db:reset_demo` | Drop + create + migrate + seed. **Solo dev/test** (aborta en producción) |
+| `metrics:scan` | Escaneo de anomalías (ráfagas, deltas en 24h, ratio de baneos en 7d) |
 
 ## Estructura del repo
 
