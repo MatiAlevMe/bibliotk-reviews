@@ -24,7 +24,7 @@ El enunciado dice: "Si tu arquitectura está bien hecha esto es barato; si te sa
 
 ### GraphQL vs REST
 
-**Decisión:** GraphQL. La empresa parece usar GraphQL (se menciona en el contexto). Además, GraphQL permite queries más eficientes (ej: pedir solo `average` y `confidence` sin traer todo el libro).
+**Decisión:** GraphQL permite queries más eficientes (ej: pedir solo `average` y `confidence` sin traer todo el libro).
 
 **Costo:** Más setup inicial, más complejidad en el schema. Pero la flexibilidad lo vale para un sistema con múltiples actores (autores, lectores, moderación, soporte).
 
