@@ -1,0 +1,19 @@
+# Normalize line endings to LF across the repo.
+# Windows local checkouts (core.autocrlf=true) used to produce CRLF working
+# trees, which broke binstubs (`bin/*`) when COPY'd into Linux containers.
+# Force LF everywhere; binary assets are explicitly marked.
+* text=auto eol=lf
+
+*.png text eol=lf binary
+*.jpg text eol=lf binary
+*.jpeg text eol=lf binary
+*.gif text eol=lf binary
+*.ico text eol=lf binary
+*.pdf text eol=lf binary
+*.woff text eol=lf binary
+*.woff2 text eol=lf binary
+*.otf text eol=lf binary
+*.ttf text eol=lf binary
+*.eot text eol=lf binary
+*.avif text eol=lf binary
+*.webp text eol=lf binary
