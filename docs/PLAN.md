@@ -41,8 +41,14 @@ Estado de ejecución. Los hitos marcados están implementados; los hallazgos que
 - [x] `AGENTS.md` — convenciones operativas
 
 ### Finding / Pendiente
-- La **demo no genera el libro de 500k reseñas** desde la UI (requiere `db:seed:large_scale`, ver Hito 1 bonus). El benchmark se corre por CLI.
-- El **reset de BD desde la UI** no usa un endpoint en el server (no se puede `DROP` la BD a la que el server está conectado); se hace vía `npm run db:reset` (CLI). Ver `DECISIONES.md`.
+> Inventario completo, prioridades y cómo resolver cada pendiente/bug en **[docs/CONTINUACION.md](CONTINUACION.md)**. Resumen de lo más relevante:
+
+- **Precisión del ban preview:** `BanImpactAnalyzer` usa `cached_average` (redondeado) y puede desviarse ±0.1 vs. banear de verdad. Fix propuesto: guardar suma exacta en `books`.
+- **Spec ban preview no verifica equivalencia** con banear+recalcular (requisito del brief) — falta agregar ese test.
+- **Concurrencia looser:** el spec de 200 threads puede tragar `RecordNotUnique` del unique index.
+- La **demo no genera el libro de 500k reseñas** desde la UI (requiere `db:seed:large_scale`); el benchmark se corre por CLI.
+- El **reset de BD desde la UI** no usa endpoint (no se puede `DROP` con el server conectado); se hace vía `npm run db:reset` (CLI). Ver `DECISIONES.md`.
+- **3 métricas "que no se vuelva a repetir"** definidas en PRODUCTO pero no implementadas.
 
 ## Stack
 
