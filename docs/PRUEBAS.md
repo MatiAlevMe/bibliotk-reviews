@@ -5,14 +5,16 @@ Cómo levantar, cargar datos y probar cada funcionalidad del motor de reseñas.
 ## Setup rápido
 
 ```bash
-cd /Users/arakito/Mati/Repos/bibliotk-reviews
+cd <ruta>/bibliotk-reviews
 bundle install
 bin/rails db:create db:migrate
 bin/rails db:seed
 bin/rails server
 ```
 
-El servidor queda en `http://localhost:3000/graphql`.
+El servidor queda en `http://localhost:3000/graphql`. También podés probar desde el demo web (`cd frontend && npm install && npm run dev` → `http://localhost:5173`).
+
+> **Nota de ambiente:** el job de tests de CI arranca con BD de fábrica en cada ejecución (la BD es efímera y se recrea con seed antes de correr). Por eso, aunque una prueba borre todo, la siguiente ejecución no se contamina.
 
 ## Cuentas de prueba
 
@@ -260,3 +262,32 @@ puts \"Average is mathematically correct: #{book.cached_average == (Review.where
 ```
 
 **Esperado:** Promedio correcto después de 100 reviews simultáneos.
+
+---
+
+## Reset de la base de datos (volver a fábrica)
+
+En desarrollo, para volver al estado de fábrica (drop + create + migrate + seed):
+
+```bash
+bin/rails db:reset_demo
+```
+
+O desde el demo: `cd frontend && npm run db:reset`. **Solo dev/test** — el task aborta si `Rails.env.production?`.
+
+Esto es útil si una prueba borró datos (p.ej. eliminaste muchas reseñas) y querés empezar de nuevo sin quedarte "stuck": siempre podés regenerar la BD.
+
+## Probar desde el demo web
+
+En `http://localhost:5173` (tras `npm run dev`):
+
+| Vista | Rol requerido | Qué ejercita |
+|-------|---------------|--------------|
+| Roles (login) | cualquiera | Switchear admin/autor/lector y cuenta |
+| Top 50 | cualquiera | Orden por promedio, `displayAverage`, `confidence` |
+| Libro | lector/autor | Detalle + crear/editar/eliminar reseña + fraud check |
+| Moderación | admin | Ban preview → banear → desbanear + auditoría |
+| Panel autor | autor | Notificaciones + reseñas ocultas |
+| Sistema | cualquiera | Ambientes + comando de reset de BD |
+
+El demo refleja los cambios directamente en la BD de desarrollo, así que podés probar cada flujo (baneo, ocultar reseñas, notificaciones) y después regenerar la BD con `node npm run db:reset`.

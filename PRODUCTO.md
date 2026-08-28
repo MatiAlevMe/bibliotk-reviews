@@ -96,3 +96,13 @@ El autor puede consultar sus notificaciones via query `notifications(userId:)`.
 **El redondeo half-up.** Lo mantengo. Es el estándar y no hay razón para cambiarlo.
 
 **La regla de baneos.** Agregaría un "período de gracia" de 24 horas donde las reseñas del usuario baneado se ocultan pero no se excluyen del promedio. Esto da tiempo a que otros usuarios reporten el contenido antes de que afecte los promedios.
+
+---
+
+## Soporte de testing y demo (no es requisito del brief)
+
+Aunque el brief sólo pide backend, se agregó una capa de validación manual:
+
+- **Demo web interactivo** (`frontend/`, Vite + TypeScript): switcheo de roles (Admin/Autor/Lector) para probar cada decisión de producto (ban preview, ban/unban, reseñas ocultas, notificaciones) con cambios reales en la BD de desarrollo.
+- **Reset a fábrica** (`db:reset_demo`, dev/test-only): destruir y recrear la BD (drop + create + migrate + seed) para no quedarse "stuck" después de probar cosas destructivas.
+- **CI determinístico**: la BD de test se recrea en cada ejecución, por lo que borrar datos en una prueba no contamina la siguiente.
