@@ -81,10 +81,48 @@ export async function moderationView(container: HTMLElement): Promise<void> {
 
   container.append(card("Seleccionar usuario", userSelect), previewPane);
 
+  const fraudPane = el("div", { class: "detail-pane" });
+  const authorInput = el("input", { type: "text", class: "input", placeholder: "Ej. Gabriel García Márquez", value: "Gabriel García Márquez" });
+  const checkBtn = el("button", { type: "button", class: "btn" }, "Analizar autor");
+  const fraudResult = el("div", { class: "fraud-result" });
+
+  async function checkAuthor(): Promise<void> {
+    fraudResult.innerHTML = "Analizando...";
+    try {
+      const { fraudAuthorAnomaly } = await api.fraudAuthorAnomaly(authorInput.value.trim());
+      fraudResult.innerHTML = "";
+      if (!fraudAuthorAnomaly) {
+        fraudResult.append(el("p", { class: "muted" }, "Sin datos para el autor."));
+        return;
+      }
+      if (fraudAuthorAnomaly.suspicious) {
+        const flagged = fraudAuthorAnomaly.flaggedBooks ?? [];
+        fraudResult.append(
+          el("div", { class: "badge badge-danger" }, `⚠️ Anomalía detectada en ${flagged.length} libro(s)`),
+          el("ul", { class: "review-list" },
+            ...flagged.map((b) => el("li", {}, `«${b.title}»: ${b.reason}`))
+          )
+        );
+      } else {
+        fraudResult.append(el("div", { class: "badge badge-ok" }, "✓ Sin anomalías detectadas para este autor."));
+      }
+    } catch (err) {
+      renderError(fraudResult, err);
+    }
+  }
+
+  checkBtn.addEventListener("click", () => void checkAuthor());
+  fraudPane.append(
+    el("div", { class: "form-row" }, authorInput, checkBtn),
+    fraudResult
+  );
+  container.append(card("Detección de anomalías por autor (Fraude)", fraudPane));
+
   const logs = el("div", { class: "detail-pane" });
   container.append(card("Auditoría de baneos", logs));
   await loadUsers();
   await renderLogs(logs);
+  await checkAuthor();
 }
 
 async function renderLogs(target: HTMLElement): Promise<void> {

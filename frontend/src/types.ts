@@ -72,6 +72,21 @@ export interface FraudCheck {
   recentAccountsRatio: number;
 }
 
+export interface FraudAuthorAnomaly {
+  suspicious: boolean;
+  author: string | null;
+  flaggedBooks: Array<{
+    bookId: number;
+    title: string;
+    suspicious: boolean;
+    reason: string;
+    fiveStarRatio: number;
+    recentAccountsRatio: number;
+    totalReviews: number;
+  }> | null;
+  checkedAt: string | null;
+}
+
 export interface BanAuditLog {
   id: string;
   action: string;
