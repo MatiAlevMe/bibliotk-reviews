@@ -27,15 +27,19 @@ export async function bookView(container: HTMLElement): Promise<void> {
 
   async function renderBookInfo(target: HTMLElement, book: Book): Promise<void> {
     try {
-      const [bookRes, reviewsRes, fraudRes, userRes] = await Promise.all([
+      const [bookRes, reviewsRes, fraudRes, userRes, modRes] = await Promise.all([
         api.book(book.id),
         api.bookReviews(book.id, false),
         api.fraudCheck(book.id),
         api.user(actor.userId),
+        api.moderationStatus(book.id),
       ]);
       const fullBook = bookRes.book;
       const reviews = reviewsRes.bookReviews;
       const actorBanned = !!userRes.user?.banned;
+      const myHidden = modRes.moderationStatus?.hiddenReviews.find(
+        (h) => h.userId === actor.userId
+      ) ?? null;
       target.innerHTML = "";
 
       const info = el("div", { class: "book-info" });
@@ -82,6 +86,10 @@ export async function bookView(container: HTMLElement): Promise<void> {
 
       if (actorBanned) {
         target.append(banNotice());
+        if (myHidden) target.append(myHiddenReviewCard(myHidden));
+      } else if (myHidden) {
+        target.append(myHiddenReviewCard(myHidden));
+        target.append(disabledReviewBox(myHidden.banReason));
       } else {
         const alreadyReviewed = reviews.some((r) => r.user?.name === actor.userName);
         target.append(addReviewForm(book.id, actor.userId, actor.userName, alreadyReviewed, () =>
@@ -171,6 +179,35 @@ function banNotice(): HTMLElement {
   ));
 }
 
+function myHiddenReviewCard(h: { rating: number; banReason: string | null }): HTMLElement {
+  const body = el("div", {},
+    el("p", {},
+      el("span", { class: "badge high" }, "No visible"),
+      ` ${"★".repeat(h.rating)}`,
+      h.banReason ? ` — Motivo: ${h.banReason}` : " — Sin motivo registrado"),
+    el("p", { class: "muted" },
+      "Esta reseña no se borró: sigue existiendo, pero no aparece en la lista pública ni cuenta para el promedio del libro.",
+      " Si creés que es un error, escribinos a ",
+      el("strong", {}, "soporte@bibliotk.com"),
+      " para apelar.")
+  );
+  return card("Tu reseña (oculta por moderación)", body);
+}
+
+function disabledReviewBox(reason: string | null): HTMLElement {
+  return el("div", { class: "review-disabled" },
+    el("p", { class: "review-form-title" }, "No podés crear una reseña en este libro"),
+    el("p", { class: "muted" },
+      "Tenés una reseña oculta por moderación en esta obra",
+      reason ? ` (motivo: ${reason})` : "",
+      " y cada usuario puede dejar una sola reseña por libro.",
+      " ",
+      "Si creés que es un error, escribinos a ",
+      el("strong", {}, "soporte@bibliotk.com"),
+      " para apelar.")
+  );
+}
+
 function editReviewForm(r: Review, userName: string, cancel: () => void, refresh: () => Promise<void>): HTMLElement {
   const rating = el("select", {}, ...["1", "2", "3", "4", "5"].map((v) => el("option", { value: v }, v)));
   rating.value = String(r.rating);
@@ -207,8 +244,9 @@ function editReviewForm(r: Review, userName: string, cancel: () => void, refresh
 
 /**
  * Panel colapsable de reseñas ocultas por moderación. Solo lo ve el admin o el
- * autor del libro. "Falsas" no es un estado individual: una reseña se oculta
- * porque su autor fue baneado por moderación (ban_reason) — acá se muestra ese motivo.
+ * autor del libro. Una reseña se oculta por ban de cuenta (ban_reason del
+ * usuario) o por moderación individual (moderation_reason de la reseña);
+ * acá se muestra el motivo resultante. El admin puede restablecerla (showReview).
  */
 async function hiddenReviewsPane(bookId: string, authorName: string, actor: { role: string; userName: string }): Promise<HTMLElement> {
   const box = el("div", { class: "card" });
@@ -269,8 +307,8 @@ async function hiddenReviewsPane(bookId: string, authorName: string, actor: { ro
   box.append(el("h3", { class: "card-title" }, "Moderación"),
     el("p", { class: "muted" },
       actorOwnsBook
-        ? "Sos el autor de este libro. Las reseñas ocultas no se borran: pertenecen a usuarios baneados y conservan el motivo."
-        : "Vista como admin. Las reseñas ocultas no se borran: pertenecen a usuarios baneados y conservan el motivo."),
+        ? "Sos el autor de este libro. Las reseñas ocultas no se borran: quedan ocultas por ban de cuenta o por moderación individual, y conservan el motivo."
+        : "Vista como admin. Las reseñas ocultas no se borran: quedan ocultas por ban de cuenta o por moderación individual, y conservan el motivo."),
     toggle, content);
   return box;
 }

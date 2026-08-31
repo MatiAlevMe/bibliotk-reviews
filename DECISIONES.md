@@ -142,15 +142,16 @@ No existe un estado **individual** "falsa" en una reseña: el sistema no etiquet
 
 ### Dónde mostrar las reseñas ocultas (vista Libro)
 
-El pain de Soporte ("¿dónde está mi reseña?") se muestra en dos lugares:
+El pain de Soporte ("¿dónde está mi reseña?") se muestra en tres lugares:
 - **Panel autor** (`moderationStatus`) — el autor ve las ocultas de su libro.
 - **Nuevo: detalle de libro → "Ver reseñas ocultas por moderación"**, visible solo para **admin** o el **autor del libro** (el lector común no las ve). Mejor descubribilidad que esconderlo solo en el panel autor, sin filtrar información sensible.
+- **Frente al propio usuario afectado:** si el usuario tiene una reseña oculta en ese libro (por ban de cuenta o por moderación individual), en el detalle ve la card **"Tu reseña (oculta por moderación)"** con su rating y el motivo, y el form de crear queda **deshabilitado** con un box gris (por unicidad, ya existe su reseña oculta en ese libro) + apelación a `soporte@bibliotk.com`. `moderationStatus` expone `userId` por review para que el frontend lo detecte. Esto responde el pain de Soporte "por qué no puedo reseñar / dónde está mi reseña" sobre el propio libro.
 
 ### El usuario baneado es notificado (aviso a Soporte)
 
 **Hallazgo corregido (2026-08-31):** antes el `ban!` solo notificaba al **autor**; el usuario baneado no recibía ninguna señal y aparecían tickets de "¿por qué ya no se ve mi reseña?". Ahora `User#ban!` crea además un `ModerationNotification` **para el propio usuario baneado** por cada libro afectado, avisándole que su reseña quedó oculta por moderación y el motivo.
 
-**En la demo:** el lector baneado ve estos avisos en la home → card **"Sobre tus reseñas"** (en `views/top.ts`). En el backend son consultables via `notifications(userId:)`.
+**En la demo:** el usuario baneado (lector **o autor**) ve en la home la card **"Tu cuenta fue baneada"** con badge, motivo y apelación a `soporte@bibliotk.com` (en `views/top.ts`; en el Panel autor también, `views/author.ts`), y de ahí su lista "Tus reseñas ocultas". En el backend son consultables via `notifications(userId:)`.
 
 **Backend:** `app/models/user.rb` (`ban!`), espejo en `frontend/src/mock-client.ts` (`banUser`). Tests: `spec/models/user_spec.rb`, `tests/unit.test.ts`.
 

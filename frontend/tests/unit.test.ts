@@ -191,5 +191,26 @@ describe("mockApi", () => {
     const after = await mockApi.bookReviews("19");
     expect(after.bookReviews.find((r) => r.id === res.createReview?.id)).toBeUndefined();
   });
+
+  it("moderationStatus reports the owner userId of each hidden review", async () => {
+    const { bookReviews } = await mockApi.bookReviews("7");
+    const target = bookReviews[0];
+    await mockApi.hideReview({ id: target.id, reason: "Contenido inapropiado" });
+
+    const { moderationStatus } = await mockApi.moderationStatus("7");
+    const hidden = moderationStatus?.hiddenReviews.find((h) => h.id === target.id);
+    expect(hidden).toBeDefined();
+    expect(hidden?.userId).toBe("7"); // la primera reseña del libro 7 belongs a Reader 1 (id 7)
+  });
+
+  it("an author who gets banned is detectable as banned (ban card on home)", async () => {
+    // Vestigio: even though authors don't review books in the seed, the ban
+    // state must surface via api.user so the home card "Tu cuenta fue baneada"
+    // renders for authors (same code path as for readers).
+    await mockApi.banUser({ userId: "2", reason: "Reseñas falsas" });
+    const { user } = await mockApi.user("2");
+    expect(user?.banned).toBe(true);
+    expect(user?.banReason).toBe("Reseñas falsas");
+  });
 });
 

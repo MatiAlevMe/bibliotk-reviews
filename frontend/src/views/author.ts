@@ -11,6 +11,21 @@ export async function authorView(container: HTMLElement): Promise<void> {
   container.append(pane);
 
   try {
+    const { user } = await api.user(actor.userId);
+    if (user?.banned) {
+      pane.append(el("div", { class: "card" },
+        el("h3", { class: "card-title" }, "Tu cuenta fue baneada"),
+        el("p", {},
+          el("span", { class: "badge high" }, "Baneado"),
+          user.banReason ? ` Motivo: ${user.banReason}` : " Sin motivo especificado."),
+        el("p", { class: "muted" },
+          "Todas tus reseñas quedaron ocultas por moderación y ya no cuentan para el promedio de los libros.",
+          " Si creés que es un error, escribinos a ",
+          el("strong", {}, "soporte@bibliotk.com"),
+          " para apelar la decisión.")
+      ));
+    }
+
     const { notifications } = await api.notifications(actor.userId);
     pane.append(el("h3", {}, "Notificaciones de moderación"));
     const list = el("ul", { class: "review-list" });

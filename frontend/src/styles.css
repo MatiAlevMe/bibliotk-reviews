@@ -140,6 +140,17 @@ th { color: var(--muted); }
 .review-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .review-form input[type="text"] { flex: 1; min-width: 180px; padding: 6px; }
 
+.review-disabled {
+  display: block;
+  background: rgba(127, 127, 127, 0.10);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  opacity: 0.85;
+}
+.review-disabled .review-form-title { margin: 0 0 6px; font-weight: 600; }
+
 .code {
   display: block;
   background: #0b101a;

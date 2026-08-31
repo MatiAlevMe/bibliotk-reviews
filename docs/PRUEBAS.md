@@ -340,10 +340,10 @@ En `http://localhost:5173` (tras `npm run dev`):
 |-------|---------------|--------------|
 | Roles (login) | cualquiera | Switchear admin/autor/lector y cuenta |
 | Top 50 | cualquiera | Orden por promedio, columna Autor y Riesgo (Alto/Medio/Bajo), `displayAverage` |
-| Libro | lector/autor | Detalle + crear/**editar/eliminar** tu reseña + fraud check + "ver reseñas ocultas" (admin/autor) + admin puede **"Ocultar (moderación)"** una reseña sin banear y **restaurar** desde el panel ocultas |
+| Libro | lector/autor | Detalle + crear/**editar/eliminar** tu reseña + fraud check + "ver reseñas ocultas" (admin/autor) + admin puede **"Ocultar (moderación)"** una reseña sin banear y **restaurar** desde el panel de ocultas. Si tu propia reseña está oculta en ese libro: card "Tu reseña (oculta por moderación)" + box gris deshabilitado en lugar del form |
 | Moderación | admin | Ban preview → banear → desbanear + auditoría (refresca al instante) + anomalía por autor (selector) + alternar ban/desban repetido sin recargar |
-| Panel autor | autor | Notificaciones + reseñas ocultas |
-| Lector baneado | lector | Card "Tu cuenta fue baneada" con motivo + apelación; en Libro, aviso en lugar del form de reseña |
+| Panel autor | autor | Notificaciones + reseñas ocultas + card "Tu cuenta fue baneada" si el autor está baneado |
+| Usuario baneado | lector y autor | Home: card "Tu cuenta fue baneada" con motivo + apelación; Libro: aviso en lugar del form de reseña |
 | Sistema | cualquiera | Ambientes + comando de reset de BD |
 
 El demo refleja los cambios directamente en la BD de desarrollo, así que podés probar cada flujo (baneo, ocultar reseñas, notificaciones) y después regenerar la BD con `node npm run db:reset`.
@@ -374,6 +374,7 @@ La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations 
 ### Autor (ej. "García Márquez" #2)
 1. **Panel autor** — banéá (como admin) a un lector que reseñó sus libros (p.ej. Reader 1 #7 en «Cien años de soledad») y luego entrá como García Márquez: verás la **notificación de moderación** (`4.x → 2.x`, motivo "moderación de cuenta") y las **reseñas ocultas** de sus libros.
 2. **Libro** — detalle con promedio, riesgo, fraud check y sus reseñas visibles.
+3. **Autor baneado** — si el propio autor es baneado (Moderación → banear #2), su home **Top 50** y su Panel autor muestran la card **"Tu cuenta fue baneada"** (badge, motivo, apelación a `soporte@bibliotk.com`), igual que a un lector.
 
 ### Lector (ej. Reader 1 #7 o Reader 10 #16)
 1. **Libro** → elegí un libro → **"Crear reseña"** (1-5★ + texto opcional). El promedio y el conteo se recalculan al instante (mutación funcional).
@@ -381,9 +382,11 @@ La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations 
 3. **Editar/eliminar tu reseña** — en tu reseña aparece "Editar" (cambia rating/texto en línea) y "Eliminar" (pide confirmación). Ambos recalculan el promedio del libro.
 4. **Top 50** — el libro reseñado sube de posición en el ranking.
 5. **"Tu cuenta fue baneada"** — si te banearon de moderación, al entrar (home) ves una card clara: badge **Baneado**, el **motivo** del ban, que tus reseñas quedaron ocultas y cómo apelar a `soporte@bibliotk.com`, seguida de la lista "Tus reseñas ocultas". En la vista Libro no ves el form de crear/editar (solo el aviso).
+6. **Reseña oculta individualmente (sin ban)** — si el admin ocultó SOLO tu reseña en un libro (`hideReview`):
+   - En ese libro ves la card **"Tu reseña (oculta por moderación)"** con tu rating y el motivo, y no ves el form de crear: en su lugar aparece un **box gris** ("No podés crear una reseña en este libro") con la apelación a `soporte@bibliotk.com`. En los demás libros podés crear/editar con normalidad.
 
 ### Notificación al usuario baneado (backend)
-Cuando `banUser` esconde las reseñas de un usuario, además de notificar al **autor**, se crea una notificación **para el propio usuario baneado** por cada libro afectado:
+Cuando `banUser` esconde las reseñas de un usuario, además de notificar al **autor**, se crea una notificación **para el propio usuario baneado** por cada libro afectado. Esto vale también si el baneado es un **autor** (la card "Tu cuenta fue baneada" aparece en su home y en su Panel autor):
 
 ```bash
 curl -s -X POST http://localhost:3000/graphql \
@@ -391,3 +394,6 @@ curl -s -X POST http://localhost:3000/graphql \
   -d '{"query":"{ notifications(userId:7) { id previousAverage newAverage reason book { title } } }"}' | jq
 ```
 **Esperado:** mensaje tipo "Tu reseña en «X» quedó oculta por moderación de cuenta (motivo: …)".
+
+### API: moderationStatus tipado
+`moderationStatus` deja de ser un scalar JSON suelto: ahora es un tipo GraphQL tipado (`ModerationStatusType` → `hiddenReviews: [HiddenReviewType]`) con campos `bookId, title, hiddenCount, hiddenReviews { id userId userName rating hiddenAt banReason }`. El campo `banReason` expresa el `moderation_reason` de la reseña (oculta individualmente) o el `ban_reason` del usuario (oculta por ban). El `userId` permite que el frontend detecte una reseña propia oculta y bloquee el form de ese libro.

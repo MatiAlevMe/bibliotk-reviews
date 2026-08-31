@@ -213,6 +213,7 @@ export const mockApi = {
       .filter((r) => r.hidden)
       .map((r) => ({
         id: r.id,
+        userId: r.userId,
         userName: r.user?.name ?? "?",
         rating: r.rating,
         hiddenAt: r.createdAt,

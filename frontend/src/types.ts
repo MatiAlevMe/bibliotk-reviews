@@ -51,6 +51,7 @@ export interface ModerationStatus {
   hiddenCount: number;
   hiddenReviews: Array<{
     id: string;
+    userId: string;
     userName: string;
     rating: number;
     hiddenAt: string;

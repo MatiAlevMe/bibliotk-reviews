@@ -37,9 +37,7 @@ export async function topView(container: HTMLElement): Promise<void> {
 
 async function renderMyNotifications(container: HTMLElement): Promise<void> {
   const actor = state.getActor();
-  if (actor.role === "author" || actor.role === "admin") return;
-  const { notifications } = await api.notifications(actor.userId);
-  if (notifications.length === 0) return;
+  if (actor.role === "admin") return;
 
   const { user } = await api.user(actor.userId);
   const banned = !!user?.banned;
@@ -57,6 +55,11 @@ async function renderMyNotifications(container: HTMLElement): Promise<void> {
         " para apelar la decisión.")
     ));
   }
+
+  if (actor.role === "author") return;
+
+  const { notifications } = await api.notifications(actor.userId);
+  if (notifications.length === 0) return;
 
   const list = el("ul", { class: "review-list" });
   for (const n of notifications) {
