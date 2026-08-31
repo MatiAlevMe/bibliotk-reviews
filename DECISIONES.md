@@ -145,6 +145,20 @@ El pain de Soporte ("¿dónde está mi reseña?") se muestra en dos lugares:
 - **Panel autor** (`moderationStatus`) — el autor ve las ocultas de su libro.
 - **Nuevo: detalle de libro → "Ver reseñas ocultas por moderación"**, visible solo para **admin** o el **autor del libro** (el lector común no las ve). Mejor descubribilidad que esconderlo solo en el panel autor, sin filtrar información sensible.
 
+### El usuario baneado es notificado (aviso a Soporte)
+
+**Hallazgo corregido (2026-08-31):** antes el `ban!` solo notificaba al **autor**; el usuario baneado no recibía ninguna señal y aparecían tickets de "¿por qué ya no se ve mi reseña?". Ahora `User#ban!` crea además un `ModerationNotification` **para el propio usuario baneado** por cada libro afectado, avisándole que su reseña quedó oculta por moderación y el motivo.
+
+**En la demo:** el lector baneado ve estos avisos en la home → card **"Sobre tus reseñas"** (en `views/top.ts`). En el backend son consultables via `notifications(userId:)`.
+
+**Backend:** `app/models/user.rb` (`ban!`), espejo en `frontend/src/mock-client.ts` (`banUser`). Tests: `spec/models/user_spec.rb`, `tests/unit.test.ts`.
+
+### Superficie de errores de validación en GraphQL (trade-off documentado)
+
+**Hallazgo:** `createReview`/`updateReview` devuelven `null` (no error GraphQL) cuando la validación falla (duplicado por libro, rating fuera de rango). El mock muestra mensajes claros vía la UI, pero la API real "traga" el error en el límite GraphQL.
+
+**Decisión:** Se documenta y **no se refactoriza ahora**. Razones: (a) la integridad está garantizada en el modelo (`Review#create`/`update` validan; unicidad también a nivel índice único en la DB), por lo que el motor es correcto; (b) el único fallo alcanzable desde la UI es el duplicado, ya cubierto con mensaje claro en `addReviewForm`; (c) cambiar el contrato a `Errors`/exceptions rompería la lógica de detección de duplicados del frontend (`res.createReview === null`) sin ganancia de comportamiento. **Mejora recomendada si sale a producción:** que `createReview`/`updateReview` devuelvan un `errors` field (industrial) y que el frontend distinga "duplicado" de "rating inválido" por código de error.
+
 ### "Confianza" vs "Riesgo" y español
 
 El backend expone `confidence` (`low/medium/high`) como convención de schema. En la UI se presentó antes como "Confianza" en inglés, que confundía (confianza alta con poca data es engañoso). **Decisión:** re-etiquetar como **Riesgo** en español: poca data = Riesgo **Alto** (el promedio pude no representar), mucha data = Riesgo **Bajo**. Solo cambia la presentación; el valor de schema sigue intacto.

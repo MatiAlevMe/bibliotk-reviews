@@ -178,7 +178,7 @@ npm run dev        # dev server en :5173, proxy a :3000 → backend REAL (necesi
 ```
 
 - **Role switching:** elegís Admin / Autor / Lector y ejecutás las acciones de ese rol.
-- **Top 50 (con Autor y Riesgo Alto/Medio/Bajo), Libro (crear reseña + fraud check + "ver reseñas ocultas" para admin/autor), Moderación (ban preview/ban/unban con motivo opcional/auditoría/autor anomalía), Panel autor (notificaciones + ocultas), Sistema (reset BD).**
+- **Top 50 (con Autor y Riesgo Alto/Medio/Bajo), Libro (crear/editar/eliminar tu reseña + fraud check + "ver reseñas ocultas" para admin/autor), Moderación (ban preview/ban/unban con motivo opcional/auditoría/autor anomalía), Panel autor (notificaciones + ocultas), Lector (aviso "Sobre tus reseñas" al ser baneado), Sistema (reset BD).**
 - Validación previa a navegador: `npm run typecheck` (tsc) y `npm test` (vitest).
 - **En localhost la demo usa el backend Rails real** (el proxy de Vite envía `/graphql` a `:3000`). Para forzar el modo mock local: `VITE_GRAPHQL_ENDPOINT=mock` en un `.env.local`.
 

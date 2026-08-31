@@ -309,7 +309,7 @@ En `http://localhost:5173` (tras `npm run dev`):
 |-------|---------------|--------------|
 | Roles (login) | cualquiera | Switchear admin/autor/lector y cuenta |
 | Top 50 | cualquiera | Orden por promedio, columna Autor y Riesgo (Alto/Medio/Bajo), `displayAverage` |
-| Libro | lector/autor | Detalle + crear/editar/eliminar reseña + fraud check + "ver reseñas ocultas" (admin/autor) |
+| Libro | lector/autor | Detalle + crear/**editar/eliminar** tu reseña + fraud check + "ver reseñas ocultas" (admin/autor) |
 | Moderación | admin | Ban preview → banear → desbanear + auditoría (refresca al instante) + anomalía por autor (selector) |
 | Panel autor | autor | Notificaciones + reseñas ocultas |
 | Sistema | cualquiera | Ambientes + comando de reset de BD |
@@ -345,5 +345,17 @@ La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations 
 
 ### Lector (ej. Reader 1 #7 o Reader 10 #16)
 1. **Libro** → elegí un libro → **"Crear reseña"** (1-5★ + texto opcional). El promedio y el conteo se recalculan al instante (mutación funcional).
-2. **No podés reseñar el mismo libro dos veces** (unicidad): la app te lo indica.
-3. **Top 50** — el libro reseñado sube de posición en el ranking.
+2. **No podés reseñar el mismo libro dos veces** (unicidad): la app te lo indica y te muestra "Editar"/"Eliminar" en tu reseña de la lista.
+3. **Editar/eliminar tu reseña** — en tu reseña aparece "Editar" (cambia rating/texto en línea) y "Eliminar" (pide confirmación). Ambos recalculan el promedio del libro.
+4. **Top 50** — el libro reseñado sube de posición en el ranking.
+5. **"Sobre tus reseñas"** — si te banearon de moderación, al entrar (home) ves una card con los avisos de que tus reseñas en qué libros quedaron ocultas y el motivo.
+
+### Notificación al usuario baneado (backend)
+Cuando `banUser` esconde las reseñas de un usuario, además de notificar al **autor**, se crea una notificación **para el propio usuario baneado** por cada libro afectado:
+
+```bash
+curl -s -X POST http://localhost:3000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ notifications(userId:7) { id previousAverage newAverage reason book { title } } }"}' | jq
+```
+**Esperado:** mensaje tipo "Tu reseña en «X» quedó oculta por moderación de cuenta (motivo: …)".

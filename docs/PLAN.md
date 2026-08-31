@@ -70,7 +70,7 @@ Estado de ejecución. Los hitos marcados están implementados; los hallazgos que
 ### Finding / Pendiente
 > Ver también sección **[Continuación y pendientes](#continuación-y-pendientes)** más abajo (registro histórico consolidado de CONTINUACION.md).
 
-- **Finding: el usuario baneado no recibe aviso.** (Relevado en code review del 2026-08-31.) El brief pide resolver la pila de Soporte de usuarios que preguntan "por qué ya no aparece mi reseña". Hoy `ban!` nota al **autor** (`ModerationNotification`), pero el **usuario baneado** no recibe ninguna notificación; `ban_reason` solo es consultable por admin/autor vía `moderationStatus`. La decisión de producto ("le sigue viendo quien la escribió") está sin mecanismo de aviso hacia el afectado. **Pendiente deseable:** notificar/exponeR al usuario su propio estado oculto + motivo.
+- **Finding resuelto: el usuario baneado ahora recibe aviso.** (Relevado en code review del 2026-08-31, resuelto el mismo día.) El brief pide resolver la pila de Soporte de usuarios que preguntan "por qué ya no aparece mi reseña". `ban!` ya notificaba al **autor**; ahora además crea un `ModerationNotification` **para el propio usuario baneado** por cada libro afectado (motivo incluido). En la demo el lector lo ve en la home ("Sobre tus reseñas", `views/top.ts`); en backend via `notifications(userId:)`. Ver `DECISIONES.md` → "El usuario baneado es notificado".
 
 ## Stack
 
