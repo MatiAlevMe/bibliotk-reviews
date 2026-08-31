@@ -218,3 +218,7 @@ Jobs: `scan_ruby` (brakeman), `lint` (rubocop), `test` (RSpec + PostgreSQL servi
 - [DECISIONES.md](DECISIONES.md) — Trade-offs y decisiones técnicas
 - [PRODUCTO.md](PRODUCTO.md) — Decisiones de producto frente a los 5 pains
 - [AGENTS.md](AGENTS.md) — Convenciones operativas
+
+## 📄 Licencia
+
+Software libre bajo [GNU AGPL v3.0](LICENSE). Podés usarlo, modificarlo y desplegarlo en tus propios servidores. Si ejecutás una versión modificada como servicio en red, debés publicar el código fuente bajo la misma licencia. Nadie puede convertir este software en un producto cerrado o propietario.
