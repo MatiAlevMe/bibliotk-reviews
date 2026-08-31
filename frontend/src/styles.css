@@ -120,6 +120,8 @@ th { color: var(--muted); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.danger { background: #552222; border-color: #884444; }
 .btn.danger:hover { background: #6b2a2a; }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+.topbar .msg { display: inline-block; margin-left: 8px; min-height: 0; }
 
 .actions { display: flex; gap: 8px; margin: 10px 0; }
 .detail-pane { margin: 8px 0; }

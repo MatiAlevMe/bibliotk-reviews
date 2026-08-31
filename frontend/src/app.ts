@@ -1,6 +1,8 @@
 import type { Role, ViewId } from "./types";
 import { state } from "./state";
 import { el } from "./ui";
+import { MOCK_MODE } from "./api";
+import { resetMockData } from "./mock-client";
 import { topView } from "./views/top";
 import { bookView } from "./views/book";
 import { moderationView } from "./views/moderation";
@@ -21,10 +23,27 @@ function render(): void {
   const actor = state.getActor();
   root.innerHTML = "";
 
+  const titleGroup = el("div", {},
+    el("strong", {}, "Bibliotk Reviews Demo"),
+    MOCK_MODE ? el("span", { class: "badge low", style: "margin-left: 8px;" }, "Offline Mock") : ""
+  );
+
+  const headerControls = el("span", { class: "actor" }, `${actor.role} · ${actor.userName}`);
+  if (MOCK_MODE) {
+    const resetBtn = el("button", { type: "button", class: "btn small" }, "Reiniciar demo");
+    const resetMsg = el("span", { class: "msg" });
+    resetBtn.addEventListener("click", () => {
+      resetMockData();
+      resetMsg.textContent = "Datos mock reiniciados a fábrica";
+      setTimeout(() => { resetMsg.textContent = ""; }, 2500);
+    });
+    headerControls.append(" ", resetBtn, resetMsg);
+  }
+
   root.append(
     el("header", { class: "topbar" },
-      el("strong", {}, "Bibliotk Reviews Demo"),
-      el("span", { class: "actor" }, `${actor.role} · ${actor.userName}`)
+      titleGroup,
+      headerControls
     )
   );
 
