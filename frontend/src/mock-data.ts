@@ -23,6 +23,7 @@ export interface MockReview extends Review {
   userId: string;
   bookId: string;
   createdAt: string;
+  moderationReason?: string | null;
 }
 
 export interface MockUser extends User {

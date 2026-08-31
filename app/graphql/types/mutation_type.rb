@@ -81,5 +81,34 @@ module Types
       user.unban!(performed_by: performed_by)
       user.ban_audit_logs.last
     end
+
+    # Hide a single review by moderation, without banning the user.
+    field :hide_review, Boolean, null: false do
+      argument :id, ID, required: true
+      argument :reason, String, required: true
+      argument :performed_by, String, required: false, default_value: "admin"
+    end
+
+    def hide_review(id:, reason:, performed_by: "admin")
+      review = Review.find_by(id: id)
+      return false unless review
+
+      review.hide_by_moderation!(reason: reason, performed_by: performed_by)
+      true
+    end
+
+    # Restore a single hidden review (the reverse of hide_review).
+    field :show_review, Boolean, null: false do
+      argument :id, ID, required: true
+      argument :performed_by, String, required: false, default_value: "admin"
+    end
+
+    def show_review(id:, performed_by: "admin")
+      review = Review.find_by(id: id)
+      return false unless review
+
+      review.show_by_moderation!(performed_by: performed_by)
+      true
+    end
   end
 end

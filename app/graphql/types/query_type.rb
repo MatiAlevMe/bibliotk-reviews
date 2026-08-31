@@ -88,7 +88,7 @@ module Types
             user_name: r.user.name,
             rating: r.rating,
             hidden_at: r.updated_at,
-            ban_reason: r.user.ban_reason
+            ban_reason: r.moderation_reason || r.user.ban_reason
           }
         }
       }

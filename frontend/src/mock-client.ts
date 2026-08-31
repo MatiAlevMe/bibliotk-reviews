@@ -153,7 +153,14 @@ export const mockApi = {
     const u = findUser(id);
     if (!u) return delay({ user: null });
     return delay({
-      user: { id: u.id, name: u.name, email: u.email, banned: u.banned },
+      user: {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        banned: u.banned,
+        banReason: u.banReason ?? null,
+        bannedAt: u.bannedAt ?? null,
+      },
     });
   },
 
@@ -209,7 +216,7 @@ export const mockApi = {
         userName: r.user?.name ?? "?",
         rating: r.rating,
         hiddenAt: r.createdAt,
-        banReason: findUser(r.userId)?.banReason ?? null,
+        banReason: r.moderationReason ?? findUser(r.userId)?.banReason ?? null,
       }));
     return delay({
       moderationStatus: {
@@ -370,6 +377,34 @@ export const mockApi = {
       }
     }
     return delay({ deleteReview: false });
+  },
+
+  hideReview(input: { id: string; reason: string }): Promise<{ hideReview: boolean }> {
+    for (const b of books) {
+      const r = b.reviews.find((rev) => rev.id === input.id);
+      if (r) {
+        if (r.hidden) return delay({ hideReview: false });
+        r.hidden = true;
+        r.moderationReason = input.reason;
+        recalcBook(b);
+        return delay({ hideReview: true });
+      }
+    }
+    return delay({ hideReview: false });
+  },
+
+  showReview(id: string): Promise<{ showReview: boolean }> {
+    for (const b of books) {
+      const r = b.reviews.find((rev) => rev.id === id);
+      if (r) {
+        if (!r.hidden) return delay({ showReview: false });
+        r.hidden = false;
+        r.moderationReason = null;
+        recalcBook(b);
+        return delay({ showReview: true });
+      }
+    }
+    return delay({ showReview: false });
   },
 
   banUser(input: {
