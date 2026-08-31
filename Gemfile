@@ -23,7 +23,7 @@ gem "bootsnap", require: false
 gem "rack-cors"
 
 # GraphQL
-gem "graphql", "~> 2.3"
+gem "graphql", "~> 2.6"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri mswin64 mingw x64_mingw jruby ], require: "debug/prelude"
