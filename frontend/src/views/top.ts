@@ -1,6 +1,7 @@
 import { api } from "../api";
 import type { Book } from "../types";
 import { el, fmtAverage, renderError, riskLabel, riskClass } from "../ui";
+import { state } from "../state";
 
 export async function topView(container: HTMLElement): Promise<void> {
   container.innerHTML = "";
@@ -8,6 +9,7 @@ export async function topView(container: HTMLElement): Promise<void> {
 
   try {
     const { topBooks } = await api.topBooks(50);
+    await renderMyNotifications(container);
     const table = el("table");
     const head = el("thead");
     head.append(
@@ -31,6 +33,28 @@ export async function topView(container: HTMLElement): Promise<void> {
   } catch (err) {
     renderError(container, err);
   }
+}
+
+async function renderMyNotifications(container: HTMLElement): Promise<void> {
+  const actor = state.getActor();
+  if (actor.role === "author" || actor.role === "admin") return;
+  const { notifications } = await api.notifications(actor.userId);
+  if (notifications.length === 0) return;
+  const list = el("ul", { class: "review-list" });
+  for (const n of notifications) {
+    list.append(
+      el("li", {},
+        el("strong", {}, `«${n.book?.title ?? "?"}» ${n.previousAverage.toFixed(1)} → ${n.newAverage.toFixed(1)}`),
+        el("div", { class: "muted" }, n.reason)
+      )
+    );
+  }
+  container.append(
+    el("div", { class: "card" },
+      el("h3", { class: "card-title" }, "Sobre tus reseñas"),
+      list
+    )
+  );
 }
 
 function bookRow(index: number, b: Book): HTMLElement {

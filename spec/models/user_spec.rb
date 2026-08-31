@@ -55,7 +55,18 @@ RSpec.describe User, type: :model do
     it "creates moderation notifications for book authors" do
       expect {
         user.ban!(reason: "Spam")
-      }.to change(ModerationNotification, :count).by(2)
+      }.to change(ModerationNotification, :count).by(4) # 2 autores + 2 avisos al baneado
+
+      expect(ModerationNotification.where(user: author).count).to eq(2)
+    end
+
+    it "notifies the banned user that their reviews were hidden" do
+      user.ban!(reason: "Spam")
+
+      mine = ModerationNotification.where(user: user)
+      expect(mine.count).to eq(2)
+      expect(mine.first.reason).to include("quedó oculta por moderación")
+      expect(mine.first.reason).to include("Spam")
     end
   end
 

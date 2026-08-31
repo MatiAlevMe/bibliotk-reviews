@@ -68,7 +68,7 @@ export async function bookView(container: HTMLElement): Promise<void> {
         reviewList.append(el("li", {}, "Sin reseñas visibles."));
       } else {
         for (const r of reviews) {
-          reviewList.append(reviewItem(r));
+          reviewList.append(reviewItem(r, actor, () => renderBookInfo(target, book)));
         }
       }
       target.append(card("Reseñas visibles", reviewList));
@@ -78,7 +78,8 @@ export async function bookView(container: HTMLElement): Promise<void> {
         target.append(await hiddenReviewsPane(book.id, book.authorName, actor));
       }
 
-      target.append(addReviewForm(book.id, actor.userId, actor.userName, () =>
+      const alreadyReviewed = reviews.some((r) => r.user?.name === actor.userName);
+      target.append(addReviewForm(book.id, actor.userId, actor.userName, alreadyReviewed, () =>
         renderBookInfo(target, book)));
     } catch (err) {
       renderError(target, err);
@@ -113,11 +114,66 @@ function pct(v: number | null | undefined): string {
   return v == null ? "—" : `${(v * 100).toFixed(0)}%`;
 }
 
-function reviewItem(r: Review): HTMLElement {
+function reviewItem(r: Review, actor: { userName: string }, refresh: () => Promise<void>): HTMLElement {
   const li = el("li", {}, `${"★".repeat(r.rating)} — ${r.user?.name ?? "?"}`);
   if (r.body) li.append(el("div", { class: "muted" }, r.body));
   if (r.hidden) li.append(el("span", { class: "badge high" }, "oculta"));
+
+  const isMine = r.user?.name === actor.userName;
+  if (isMine && !r.hidden) {
+    const editBtn = el("button", { type: "button", class: "btn small" }, "Editar");
+    const delBtn = el("button", { type: "button", class: "btn small danger" }, "Eliminar");
+    const actions = el("div", { class: "actions", style: "margin:6px 0;" }, editBtn, delBtn);
+    li.append(actions);
+
+    editBtn.addEventListener("click", () => {
+      li.innerHTML = "";
+      li.append(editReviewForm(r, actor.userName, () => {
+        li.replaceWith(reviewItem(r, actor, refresh));
+      }, refresh));
+    });
+
+    delBtn.addEventListener("click", async () => {
+      if (!confirm("¿Eliminar tu reseña? Esta acción no se puede deshacer.")) return;
+      const res = await api.deleteReview(r.id);
+      if (res.deleteReview) await refresh();
+    });
+  }
   return li;
+}
+
+function editReviewForm(r: Review, userName: string, cancel: () => void, refresh: () => Promise<void>): HTMLElement {
+  const rating = el("select", {}, ...["1", "2", "3", "4", "5"].map((v) => el("option", { value: v }, v)));
+  rating.value = String(r.rating);
+  const body = el("input", { type: "text", placeholder: "Texto (opcional, máx 1000)", value: r.body ?? "" });
+  const saveBtn = el("button", { type: "button", class: "btn primary" }, "Guardar");
+  const cancelBtn = el("button", { type: "button", class: "btn" }, "Cancelar");
+  const msg = el("p", { class: "msg" });
+  const form = el("div", { class: "review-form" },
+    el("span", {}, `Editando (${userName}) `),
+    rating, "★", body, saveBtn, cancelBtn, msg
+  );
+
+  saveBtn.addEventListener("click", async () => {
+    msg.textContent = "";
+    try {
+      const res = await api.updateReview({
+        id: r.id,
+        rating: Number(rating.value),
+        body: body.value || "",
+      });
+      if (res.updateReview) {
+        msg.textContent = "Reseña actualizada.";
+        await refresh();
+      } else {
+        msg.textContent = "No se pudo actualizar la reseña.";
+      }
+    } catch (err) {
+      msg.textContent = err instanceof Error ? err.message : String(err);
+    }
+  });
+  cancelBtn.addEventListener("click", cancel);
+  return form;
 }
 
 /**
@@ -183,8 +239,14 @@ function addReviewForm(
   bookId: string,
   userId: string,
   userName: string,
+  alreadyReviewed: boolean,
   refresh: () => Promise<void>
 ): HTMLElement {
+  if (alreadyReviewed) {
+    return card("Tu reseña", el("p", { class: "muted" },
+      `Ya reseñaste este libro. Usá "Editar"/"Eliminar" en tu reseña de la lista de arriba (cada usuario puede dejar una sola reseña por libro).`));
+  }
+
   const rating = el("select", {}, ...["1", "2", "3", "4", "5"].map((v) => el("option", { value: v }, v)));
   rating.value = "4";
   const body = el("input", { type: "text", placeholder: "Texto (opcional, máx 1000)" });

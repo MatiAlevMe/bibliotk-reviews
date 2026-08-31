@@ -123,9 +123,10 @@ describe("mockApi", () => {
     expect(card).toBeDefined();
     expect(card?.reason).toContain("moderación de cuenta");
 
-    // The banned reader is NOT the notification recipient.
+    // The banned reader IS notified that their reviews were hidden.
     const { notifications: bannedUserNotifs } = await mockApi.notifications("7");
-    expect(bannedUserNotifs).toHaveLength(0);
+    expect(bannedUserNotifs.length).toBeGreaterThan(0);
+    expect(bannedUserNotifs[0].reason).toContain("quedó oculta por moderación");
   });
 
   it("exposes seed books aligned with the real Rails seed", async () => {

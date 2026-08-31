@@ -42,6 +42,15 @@ class User < ApplicationRecord
             reason: "Tu libro «#{book.title}» tuvo un cambio en su calificación de #{old_average} a #{book.cached_average}. Esto se debió a la exclusión de reseñas por moderación de cuenta. Si tenés preguntas, contactá a soporte@bibliotk.com"
           )
         end
+
+        # Avisar al usuario baneado que su reseña en este libro quedó oculta.
+        ModerationNotification.create!(
+          user: self,
+          book: book,
+          previous_average: old_average,
+          new_average: book.cached_average,
+          reason: "Tu reseña en «#{book.title}» quedó oculta por moderación de cuenta (motivo: #{reason}). Ya no cuenta para el promedio del libro; seguís viéndola en tu perfil."
+        )
       end
 
       BanAuditLog.create!(
