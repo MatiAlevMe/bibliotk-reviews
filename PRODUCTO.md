@@ -1,117 +1,63 @@
-# PRODUCTO.md
+# Decisiones de Producto — Bibliotk
 
-## Decisión frente a los 5 mensajes de la primera semana
-
-### 1. Moderación: "Necesito saber cuánto le va a mover el promedio a cada libro"
-
-**Decisión: Implementar `banPreview`.**
-
-Se expone un query GraphQL que calcula el impacto de banear a un usuario SIN modificar la base de datos. Recorre todas las reseñas del usuario, calcula el promedio proyectado para cada libro afectado, y devuelve un reporte con: libro, promedio actual, promedio proyectado, y delta.
-
-**Costo:** O(n) donde n = número de reseñas del usuario. Para 4.000 reseñas es ~4ms. Si la arquitectura estuviera mal diseñada (recalculando desde la DB para cada libro), costaría ~4 segundos. Con los aggregates cacheados, es barato.
-
-**Al autor:** No se le notifica nada antes del ban. La notificación llega después, cuando el ban ya se ejecutó.
-
-### 2. Growth: "El cartel de 'Reseñas Insuficientes' nos está matando el click-through"
-
-**Decisión: NO bajamos el umbral de 3 a 1.** En su lugar:
-
-- En el **detalle del libro** (`book` query) se muestra el promedio siempre, incluyendo con 1 reseña.
-- En el **top 50** se muestra `"Insuficientes"` si <3 reseñas, pero se ordena por average real.
-- Se agrega campo `confidence`: `low` (1-2), `medium` (3-9), `high` (10+).
-
-**Por qué no bajar el umbral:** Con 1 o 2 reseñas el promedio es estadísticamente inútil. Un libro con 1 reseña de 5★ no tiene "4.5 de promedio", tiene "1 persona le gustó". Mostrar el número sin contexto es peor que no mostrar nada. El campo `confidence` le da a Growth el dato para tomar decisiones (ej: mostrar el average con 2 reseñas si el confidence es `low`).
-
-**Costo de no hacer nada:** Growth pierde click-through. Con esta solución ganan el dato sin perder credibilidad.
-
-### 3. Autor: "Mi libro bajó de 4.6 a 2.3 y nadie me avisó"
-
-**Decisión: Notificación automática al autor cuando se banea un usuario que reseñó su libro.**
-
-Se crea un `ModerationNotification` con:
-- Promedio anterior y nuevo
-- Razón: "Tu libro tuvo un cambio en su calificación debido a la exclusión de reseñas por moderación de cuenta"
-- Contacto de soporte
-
-El autor puede consultar sus notificaciones via query `notifications(userId:)`.
-
-**Costo:** Un `ModerationNotification.create!` por cada libro afectado. Si el usuario baneado reseñó 200 libros, son 200 inserts. Dentro de una transacción, es aceptable.
-
-**Al autor:** No se le dice "compraste reseñas falsas". Se le dice "hubo un cambio por moderación". Esto es intencional: la moderación no acusa, informa.
-
-### 4. Soporte: "Tengo 12 tickets preguntando por qué su reseña 'ya no aparece'"
-
-**Decisión: Las reseñas NO desaparecen, quedan `hidden: true`.**
-
-- El usuario que la escribió es **notificado** (un `ModerationNotification` al baneado por cada libro afectado) de que su reseña quedó oculta por moderación y el motivo — en la UI, va a "Sobre tus reseñas" en la home (ver guía **`docs/PRUEBAS.md` › Lector**).
-- Soporte puede ver reseñas ocultas con el motivo via query `moderationStatus(bookId:)`
-- No hay tickets de "¿dónde está mi reseña?" porque técnicamente no desaparece y además el afectado recibe aviso
-
-**Por qué esta decisión:** La alternativa (borrar la reseña) crea un limbo de información. El usuario no sabe qué pasó, soporte no puede responder, y el autor no sabe por qué bajó el promedio. Con `hidden: true` todos los actores tienen visibilidad.
-
-### 5. Dirección: "Que no se vuelva a repetir"
-
-**Decisión: 3 métricas definidas + rake task de backfill.**
-
-**Métricas (definidas + implementadas como escaneo `metrics:scan`, sin pipeline de eventos):**
-1. Reviews/min por libro → alerta si >50 en 1 hora → Moderación
-2. Average delta por libro → alerta si cambia >1.0 en 24h → Moderación
-3. Ratio banned/total reviewers → alerta si >5% en 7 días → Growth
-
-**Dónde se instrumentarían (punto de emisión en el código):**
-- **Reviews/min por libro:** en `Review#create`/`after_create` → emitir `review.created` con `book_id` a un contador con ventana de 1h (ej. redis INCR por minuto). El query de ráfaga ya vive en `AnomalyWatcher#check_review_bursts`.
-- **Average delta por libro:** en `Book#recalculate!` cuando `|new - previous| > 1.0` → emitir `book.average_delta` y correlacionar con el `ModerationNotification` creado en `User#ban!`. El query ya vive en `AnomalyWatcher#check_average_deltas`.
-- **Ratio banned/total reviewers:** en `User#ban!` → emitir `user.banned` con fecha, para contar baneos en los últimos 7 días vs. reviews creadas. El query ya vive en `AnomalyWatcher#check_banned_ratio`.
-
-Hoy los tres umbrales están implementados como escaneo **on-demand** (`bin/rake metrics:scan` → `AnomalyWatcher.scan`); pasarlos a un pipeline (Datadog/StatsD/Prometheus + scheduler `clockwork`/`whenever`) es el paso que los haría "en vivo". El brief pide definir dónde irían y quién las mira, no implementar el pipeline.
-
-**Backfill:** Rake task `db:seed:recalculate_all` que recalcula todos los promedios desde cero. Se ejecuta después de un ban masivo o periódicamente como insurance.
-
-**Mientras corre el backfill:** El sistema sigue con los datos viejos. Se actualizan de a uno. No hay downtime.
+Este documento resume las decisiones estratégicas de producto frente a los desafíos planteados en la plataforma, redactado con foco en negocio, usuarios y operaciones sin requerir lectura técnica del código fuente.
 
 ---
 
-## A cuál le dije que no
+## 1. Respuesta a los 5 Mensajes de la Primera Semana
 
-**Al umbral de 3 reseñas (Growth).** No lo bajé a 1 porque un promedio con 1-2 reseñas es engañoso. Un libro con 1 reseña de 5★ no tiene "5 estrellas", tiene "una persona lo liked". La solución fue dar a Growth el dato (confidence) para que tome su propia decisión, sin comprometer la integridad del promedio.
+### Moderación: "¿Cuánto le va a mover el promedio a cada libro antes de banear?"
+**Decisión:** Se implementó una herramienta de previsualización de impacto sin escritura (`banPreview`).
+Antes de aplicar un baneo sobre un usuario con miles de reseñas, el moderador puede simular el resultado exacto: cuántos libros se verán afectados, cuál es el promedio actual de cada uno y cuál será su puntaje proyectado tras la exclusión. Esto transforma una acción que antes se ejecutaba a ciegas en una decisión informada y predecible, mitigando reclamos posteriores tanto de autores como de la comunidad.
 
----
+### Growth: "El cartel de 'Reseñas Insuficientes' en la home nos mata el click-through"
+**Decisión: Le decimos que NO a bajar el umbral de 3 reseñas.**
+Promediar 1 o 2 reseñas no representa la calidad de una obra; un único puntaje de 5 estrellas solo refleja la opinión aislada de una persona y deteriora la credibilidad de toda la plataforma. Para conciliar la necesidad de Growth sin engañar al lector, adoptamos una estrategia dual:
+- **En la Home (Top 50):** Se mantiene el rótulo "Reseñas Insuficientes" cuando hay menos de 3 opiniones, pero el ranking ordena internamente por el promedio real. Además, se ofrecen controles para ocultar libros con datos insuficientes y filtrar por nivel de riesgo estadístico (Bajo, Medio, Alto).
+- **En el Detalle del Libro:** Se muestra siempre el promedio numérico exacto (incluso con 1 o 2 reseñas), acompañado de un distintivo explícito de "Reseñas insuficientes" y su indicador de riesgo. Así el lector que busca profundidad obtiene el dato con su contexto correspondiente.
 
-## Métricas o eventos definidos
+### Autor: "Mi libro bajó de 4.6 a 2.3 de un día para otro y nadie me avisó"
+**Decisión:** Notificaciones automáticas de moderación transparentes y no acusatorias.
+Cuando un baneo masivo excluye reseñas y modifica el promedio de una obra, el sistema genera automáticamente una notificación privada en el panel del autor con el promedio anterior, el nuevo puntaje resultante y un canal directo de contacto con soporte. El mensaje no formula acusaciones ("compraste reseñas falsas"), sino que informa con sobriedad que hubo un ajuste por moderación de cuentas, reduciendo la fricción y el desconcierto.
 
-| Métrica | Umbral | Acción | Quién la mira | Punto de emisión en código |
-|---------|--------|--------|---------------|----------------------------|
-| Reviews/min por libro | >50 en 1 hora | Alertar a moderación | Moderación | `Review` create / `AnomalyWatcher#check_review_bursts` |
-| Average delta por libro | >1.0 en 24h | Alertar a moderación | Moderación | `Book#recalculate!` / `AnomalyWatcher#check_average_deltas` |
-| Ratio banned/total reviewers | >5% en 7 días | Alertar a growth | Growth | `User#ban!` / `AnomalyWatcher#check_banned_ratio` |
-| Reseñas ocultas individualmente (hideReview) | +20/hora o >2 en el mismo libro | Alertar a moderación (posible ataque a un libro) | Moderación | `Review#hide_by_moderation!` / `show_by_moderation!` |
+### Soporte: "12 tickets preguntando por qué la reseña 'ya no aparece'"
+**Decisión:** Las reseñas nunca se borran físicamente; se ocultan (`hidden`) y se notifica al usuario.
+Borrar registros crea un vacío de información donde el usuario desconoce lo ocurrido y soporte no puede auditar el caso. Al preservar la reseña como oculta, el usuario baneado o moderado visualiza en su interfaz un aviso claro explicando que su reseña fue excluida por moderación con el motivo correspondiente e instrucciones para apelar ante soporte. Paralelamente, el equipo de soporte y el autor pueden consultar el histórico de reseñas ocultas en cada libro.
 
----
-
-## Plan para promedios corruptos en producción
-
-1. **Rake task `recalculate_all`:** Recalcula todos los `cached_average` desde las reseñas reales
-2. **Orden:** Se ejecuta en background, libros de a uno, con logging de cambios
-3. **Comunicación:** Se genera un reporte de qué libros cambiaron y por cuánto
-4. **Mientras corre:** El sistema sigue operativo con datos viejos
-
----
-
-## Cambiaría si esto fuera mi producto
-
-**El umbral de 3 reseñas.** Lo cambiaría a un sistema de confianza dinámico: si el libro tiene <5 reseñas, el promedio se muestra con un asterisco y tooltip "Promedio basado en pocas reseñas". Esto le da al usuario la información completa y le permite decidir si confía o no. El umbral fijo de 3 es una simplificación útil para este challenge, pero en producción prefiero la transparencia.
-
-**El redondeo half-up.** Lo mantengo. Es el estándar y no hay razón para cambiarlo.
-
-**La regla de baneos.** Agregaría un "período de gracia" de 24 horas donde las reseñas del usuario baneado se ocultan pero no se excluyen del promedio. Esto da tiempo a que otros usuarios reporten el contenido antes de que afecte los promedios.
+### Dirección: "Que no se vuelva a repetir"
+**Decisión:** Señales preventivas de anomalías y procedimiento de remediación en frío.
+Se establecieron tres señales automatizadas para detectar campañas de manipulación en tiempo real y un protocolo de recálculo masivo (backfill) para sincronizar promedios históricos sin interrumpir el servicio a los usuarios.
 
 ---
 
-## Soporte de testing y demo (no es requisito del brief)
+## 2. A Cuál le Dijimos que NO y Por Qué
 
-Aunque el brief sólo pide backend, se agregó una capa de validación manual:
+**Le dijimos que NO a Growth en su pedido de bajar el umbral en el listado principal.** Ceder a mostrar promedios inflados de 5.0 con una sola reseña artificial incentiva directamente la creación de cuentas falsas para posicionarse en los primeros lugares del catálogo. La credibilidad del motor de calificación es el activo más valioso de Bibliotk; protegerla mediante indicadores de riesgo y umbrales claros garantiza un crecimiento sostenible a largo plazo.
 
-- **Demo web interactivo** (`frontend/`, Vite + TypeScript): switcheo de roles (Admin/Autor/Lector) para probar cada decisión de producto (ban preview, ban/unban, reseñas ocultas, notificaciones) con cambios reales en la BD de desarrollo.
-- **Demo en Vercel (offline/mock):** el deploy estático (sin backend) resuelve las mismas features con datos **en memoria** (Diseño de `frontend/src/mock-client.ts`), persistiendo solo durante la sesión y con botón *"Reiniciar demo"* para volver a fábrica. Útil para presentar la UI sin depender de un server.
-- **Reset a fábrica** (`db:reset_demo`, dev/test-only): destruir y recrear la BD (drop + create + migrate + seed) para no quedarse "stuck" después de probar cosas destructivas.
-- **CI determinístico**: la BD de test se recrea en cada ejecución, por lo que borrar datos en una prueba no contamina la siguiente.
+---
+
+## 3. Señales y Métricas de Salud del Motor
+
+Para garantizar la salud de la plataforma y detectar campañas fraudulentas mientras ocurren, definimos tres señales clave:
+
+1. **Ráfaga de reseñas por libro (Reviews / hora):** Alerta a **Moderación** si un libro supera 50 reseñas en menos de 1 hora. Permite detectar compras masivas de reseñas antes de que distorsionen el catálogo.
+2. **Variación abrupta del promedio (Delta en 24h):** Alerta a **Moderación** si la calificación de un libro oscila más de 1.0 punto en un solo día, señalando posibles ataques organizados o campañas de desprestigio.
+3. **Ratio de revisores baneados sobre activos:** Alerta a **Growth y Producto** si más del 5% de los usuarios que reseñaron en los últimos 7 días terminan baneados, indicando vulnerabilidades en el registro de cuentas o granjas de bots activas.
+
+---
+
+## 4. Plan de Remediación para Promedios en Producción
+
+Frente a libros con promedios desactualizados o manipulados en el pasado:
+- **Ejecución en segundo plano:** Un proceso de mantenimiento recalcula los agregados matemáticos libro por libro desde las reseñas legítimas activas, registrando los deltas detectados.
+- **Continuidad operativa:** El catálogo permanece disponible en todo momento leyendo los valores previos hasta que cada obra es actualizada de forma atómica.
+- **Comunicación transparente:** Finalizado el proceso, se emite un reporte a soporte con los títulos corregidos y se despachan las notificaciones automáticas a los autores cuyos promedios variaron.
+
+---
+
+## 5. Qué Cambiaría si Fuera mi Producto a Gran Escala
+
+Si Bibliotk evolucionara hacia un producto de millones de usuarios en producción, implementaría dos cambios estructurales:
+
+1. **Puntaje Ponderado Bayesiano (Weighted Rating):** En lugar de un corte rígido de 3 reseñas, utilizaría un algoritmo bayesiano (similar al estándar de IMDb) que pondera la calificación hacia la media global de la plataforma mientras el volumen de reseñas sea bajo. Esto permite rankear de forma justa obras nuevas sin exponerlas a la volatilidad de calificaciones únicas.
+2. **Ponderación por Reputación y Antigüedad del Lector (Karma/Lectura Verificada):** Asignar mayor peso en el promedio a usuarios con trayectoria comprobada y compras verificadas frente a cuentas recién creadas. Esto neutraliza de raíz el impacto de ataques de ráfaga y bots, permitiendo que el sistema se autorregule incluso antes de la intervención de los moderadores.

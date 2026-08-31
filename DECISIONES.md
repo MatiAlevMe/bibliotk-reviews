@@ -165,9 +165,12 @@ El pain de Soporte ("¿dónde está mi reseña?") se muestra en tres lugares:
 
 El backend expone `confidence` (`low/medium/high`) como convención de schema. En la UI se presentó antes como "Confianza" en inglés, que confundía (confianza alta con poca data es engañoso). **Decisión:** re-etiquetar como **Riesgo** en español: poca data = Riesgo **Alto** (el promedio pude no representar), mucha data = Riesgo **Bajo**. Solo cambia la presentación; el valor de schema sigue intacto.
 
-### Top 50: columna Autor y más libros en el mock
+### Top 50: controles de filtrado dinámico (Esconder insuficientes y selector de riesgo)
 
-Se agregó columna **Autor** y el mock pasó de 10 a **20 libros** para que el Top 50 se vea con volumen. En el backend real el Top 50 es `ORDER BY cached_average DESC LIMIT 50` (si hay menos de 50 libros, lista los que hay).
+Para dar respuesta flexible tanto al equipo de Growth como a lectores que buscan filtrar contenido según significancia estadística:
+- **Checkbox "Esconder libros con reseñas insuficientes (< 3)":** Permite omitir del listado los títulos que aún no alcanzan el umbral mínimo para mostrar un promedio confiable.
+- **Selector de nivel de riesgo estadístico:** Permite filtrar la tabla para visualizar únicamente títulos con Riesgo Bajo (10+ reseñas), Riesgo Medio (3-9 reseñas) o Riesgo Alto (1-2 reseñas).
+- **Columna Autor y volumen del catálogo mock:** Se agregó columna Autor y el catálogo mock se expandió a 20 títulos para probar el comportamiento de los rankings y filtros con volumen. En el backend real el Top 50 es `ORDER BY cached_average DESC LIMIT 50`.
 
 ### Detección de anomalías: selector en vez de input
 
