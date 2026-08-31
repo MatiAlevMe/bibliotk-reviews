@@ -164,11 +164,29 @@ Los specs `3.35` y `2.249` en `spec/models/review_spec.rb` estaban vacíos (sin 
 
 ---
 
-## 13. `display_average` tipo GraphQL (🛠️ resuelto)
+---
 
-**Estado:** `[✅ resuelto]` — commit `042860a`
+## 14. Fallo Brakeman EOLRails en CI
 
-El campo `display_average` estaba tipado `String` pero devolvía un `Float`/`"Insuficientes"`. Se cambió a `GraphQL::Types::JSON`.
+**Estado:** `[✅ resuelto]`
+
+**Detalle:** Rails 7.2.3.2 activaba advertencia de ciclo de vida en Brakeman 8.0. Se configuró `config/brakeman.ignore` con el fingerprint SHA-256 exacto y se actualizó `.github/workflows/ci.yml` para usar `-i config/brakeman.ignore`.
+
+---
+
+## 15. Aislamiento de datos en AnomalyWatcher specs
+
+**Estado:** `[✅ resuelto]`
+
+**Detalle:** El job `test` en CI ejecuta `db:seed` antes de `rspec`. Se añadió limpieza en `spec/services/anomaly_watcher_spec.rb` para garantizar que las métricas basadas en tiempo no sean afectadas por datos residuales del seed.
+
+---
+
+## 16. Deploy en Vercel del Frontend DEMO
+
+**Estado:** `[✅ resuelto]`
+
+**Detalle:** Se agregó `frontend/vercel.json` con rewrite de SPA y soporte en `frontend/src/api.ts` para la variable de entorno `VITE_GRAPHQL_ENDPOINT`.
 
 ---
 

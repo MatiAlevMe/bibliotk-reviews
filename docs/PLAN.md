@@ -48,6 +48,13 @@ Estado de ejecución. Los hitos marcados están implementados; los hallazgos que
 - [x] Query GraphQL `fraudAuthorAnomaly` y visualización en demo UI
 - [x] Servicio `AnomalyWatcher`, rake `metrics:scan` y specs de alertas (3 métricas de producto)
 
+### Hito 6 — Vercel Deploy, Estabilidad Node/Ruby y Saneamiento CI (✅ completado)
+- [x] Soporte de despliegue en Vercel para la demo frontend (`frontend/vercel.json` y `VITE_GRAPHQL_ENDPOINT`)
+- [x] Corrección de autoría de commits unificada a `MatiAlevMe` (`inefableataraxia1@gmail.com`)
+- [x] Estabilización de tests de `AnomalyWatcher` con aislamiento de base de datos en CI
+- [x] Actualización de flags en `scan_ruby` (Brakeman) y compatibilidad con Node 22 LTS
+- [x] Saneamiento de scripts en `frontend/package.json` (`db:reset`)
+
 ### Finding / Pendiente
 > Inventario completo y registro histórico en **[docs/CONTINUACION.md](CONTINUACION.md)**.
 - La **demo no genera el libro de 500k reseñas** desde la UI (requiere `db:seed:large_scale`); el benchmark se corre por CLI.
