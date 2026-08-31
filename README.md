@@ -4,9 +4,10 @@ Motor de calificación para Bibliotk — plataforma de reseñas de libros.
 
 ## Requisitos
 
-- Ruby 3.1.2
+- Ruby 3.3.1 (`.ruby-version`)
 - PostgreSQL 16+
 - Rails 7.2
+- Node 22+ (para el frontend demo)
 
 ## Setup
 
@@ -179,6 +180,19 @@ npm run dev        # dev server en :5173, proxy a :3000
 - **Role switching:** elegís Admin / Autor / Lector y ejecutás las acciones de ese rol.
 - **Top 50, Libro (CRUD reseñas + fraud check), Moderación (ban preview/ban/unban/auditoría), Panel autor (notificaciones + ocultas), Sistema (reset BD).**
 - Validación previa a navegador: `npm run typecheck` (tsc) y `npm test` (vitest).
+
+### Deploy a Vercel
+
+El demo frontend incluye `frontend/vercel.json` y soporte para `VITE_GRAPHQL_ENDPOINT`:
+
+```bash
+# Desde el root o importando la carpeta frontend/ en Vercel:
+# Root Directory: frontend
+# Build Command: npm run build
+# Output Directory: dist
+# Environment Variable (opcional): VITE_GRAPHQL_ENDPOINT=https://tu-api-rails.com/graphql
+```
+
 
 ## Ambientes y reset de BD
 
