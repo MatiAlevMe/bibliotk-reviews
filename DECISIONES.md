@@ -128,3 +128,31 @@ El enunciado dice: "Si tu arquitectura está bien hecha esto es barato; si te sa
 2. **Optimistic locking en reviews:** En lugar de `SELECT FOR UPDATE`, usar un `lock_version` para detectar conflictos sin bloquear.
 3. **Cache en Redis para el top 50:** Guardar el top 50 en Redis con TTL de 5 minutos. Esto reduce la carga a la DB.
 4. **API versioning:** Empezar con `v1/` en los queries para poder evolucionar sin romper clientes existentes.
+
+## Decisiones de producto y UI (demo)
+
+### "¿Qué define que una reseña es falsa?"
+
+No existe un estado **individual** "falsa" en una reseña: el sistema no etiqueta reseñas sueltas. Lo que existe:
+- **`FraudDetector` / `fraudAuthorAnomaly`** marcan **señales agregadas** (mayoría 5★ de cuentas recientes, distribución anómala) a nivel libro/autor → "sospechoso", no "falsa".
+- **El baneo de moderación** (`ban!` con `reason`) oculta retroactivamente **todas** las reseñas del usuario baneado (`hidden: true`) con un `ban_reason`.
+
+**Decisión:** No inventar un campo "falsa / legítima". La pregunta "por qué está oculta" se responde con `ban_reason` del usuario baneado, y "por qué es sospechosa" con el reporte de fraude. Así no se abre la caja de «¿es esta reseña en particular falsa?», que no es comprobable per-review.
+
+### Dónde mostrar las reseñas ocultas (vista Libro)
+
+El pain de Soporte ("¿dónde está mi reseña?") se muestra en dos lugares:
+- **Panel autor** (`moderationStatus`) — el autor ve las ocultas de su libro.
+- **Nuevo: detalle de libro → "Ver reseñas ocultas por moderación"**, visible solo para **admin** o el **autor del libro** (el lector común no las ve). Mejor descubribilidad que esconderlo solo en el panel autor, sin filtrar información sensible.
+
+### "Confianza" vs "Riesgo" y español
+
+El backend expone `confidence` (`low/medium/high`) como convención de schema. En la UI se presentó antes como "Confianza" en inglés, que confundía (confianza alta con poca data es engañoso). **Decisión:** re-etiquetar como **Riesgo** en español: poca data = Riesgo **Alto** (el promedio pude no representar), mucha data = Riesgo **Bajo**. Solo cambia la presentación; el valor de schema sigue intacto.
+
+### Top 50: columna Autor y más libros en el mock
+
+Se agregó columna **Autor** y el mock pasó de 10 a **20 libros** para que el Top 50 se vea con volumen. En el backend real el Top 50 es `ORDER BY cached_average DESC LIMIT 50` (si hay menos de 50 libros, lista los que hay).
+
+### Detección de anomalías: selector en vez de input
+
+**Decisión:** el "Analizar autor" pasó de un input de texto libre a un **selector** con los autores presentes en el catálogo. Evita errores de tipeo y confirma que el autor existe. (En la API se mantiene `fraudAuthorAnomaly(authorName:)` para uso programático.)

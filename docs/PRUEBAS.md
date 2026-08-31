@@ -308,10 +308,42 @@ En `http://localhost:5173` (tras `npm run dev`):
 | Vista | Rol requerido | Qué ejercita |
 |-------|---------------|--------------|
 | Roles (login) | cualquiera | Switchear admin/autor/lector y cuenta |
-| Top 50 | cualquiera | Orden por promedio, `displayAverage`, `confidence` |
-| Libro | lector/autor | Detalle + crear/editar/eliminar reseña + fraud check |
-| Moderación | admin | Ban preview → banear → desbanear + auditoría |
+| Top 50 | cualquiera | Orden por promedio, columna Autor y Riesgo (Alto/Medio/Bajo), `displayAverage` |
+| Libro | lector/autor | Detalle + crear/editar/eliminar reseña + fraud check + "ver reseñas ocultas" (admin/autor) |
+| Moderación | admin | Ban preview → banear → desbanear + auditoría (refresca al instante) + anomalía por autor (selector) |
 | Panel autor | autor | Notificaciones + reseñas ocultas |
 | Sistema | cualquiera | Ambientes + comando de reset de BD |
 
 El demo refleja los cambios directamente en la BD de desarrollo, así que podés probar cada flujo (baneo, ocultar reseñas, notificaciones) y después regenerar la BD con `node npm run db:reset`.
+
+---
+
+## Probar la DEMO en Vercel (modo offline/mock)
+
+**URL:** https://bibliotk-reviews.vercel.app
+
+La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations con un client mock en memoria (`frontend/src/mock-client.ts`). Por eso:
+
+- **No hay que configurar nada** (ni Vercel env vars ni servidor externo) → sin error 405.
+- Los datos mutados **persisten solo durante la sesión**; recargar la página los descarta.
+- Para volver a fábrica a mitad de sesión: botón **"Reiniciar demo"** (arriba a la derecha o en la vista Sistema).
+
+> Preparación: pestaña **Roles** para switchear de personaje, o recargá la página para resetear.
+
+### Admin (Moderación)
+1. **Ban preview** — Moderación → elegí un usuario (ej. «Reader 3» #9) → mirá la tabla Actual / Proyectado / Delta por libro **antes** de banear (no escribe nada).
+2. **Banear** — botón "Banear" → verás el cambio en "Auditoría de baneos" (se refresca al instante) y las reseñas del usuario dejan de contar.
+3. **Desbanear** — reversa: entra de nuevo y los promedios vuelven.
+4. **Detección de fraude** — en "Analizar autor" elegí `Jorge Luis Borges` del selector → marca ⚠️ anomalía en «El Aleph» (cluster 5★ de cuentas recientes de ejemplo).
+5. **Top 50** — promedios redondeados a 1 decimal, "Insuficiente" si <3 reseñas, columna "Riesgo" (Alto/Medio/Bajo) y Autor.
+6. **Libro → Moderación** — botón "Ver reseñas ocultas por moderación" (admin o autor del libro) con el motivo de cada ban.
+7. **Sistema** — botón reset mock + comando CLI documentado.
+
+### Autor (ej. "García Márquez" #2)
+1. **Panel autor** — banéá (como admin) a un lector que reseñó sus libros (p.ej. Reader 1 #7 en «Cien años de soledad») y luego entrá como García Márquez: verás la **notificación de moderación** (`4.x → 2.x`, motivo "moderación de cuenta") y las **reseñas ocultas** de sus libros.
+2. **Libro** — detalle con promedio, riesgo, fraud check y sus reseñas visibles.
+
+### Lector (ej. Reader 1 #7 o Reader 10 #16)
+1. **Libro** → elegí un libro → **"Crear reseña"** (1-5★ + texto opcional). El promedio y el conteo se recalculan al instante (mutación funcional).
+2. **No podés reseñar el mismo libro dos veces** (unicidad): la app te lo indica.
+3. **Top 50** — el libro reseñado sube de posición en el ranking.
