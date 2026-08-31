@@ -12,6 +12,13 @@ export async function moderationView(container: HTMLElement): Promise<void> {
   const userSelect = el("select", { class: "user-select" });
   let users: User[] = [];
 
+  const logs = el("div", { class: "detail-pane" });
+  container.append(card("Seleccionar usuario", userSelect), previewPane);
+
+  async function refreshLogs(): Promise<void> {
+    await renderLogs(logs);
+  }
+
   async function loadUsers(): Promise<void> {
     try {
       const ids = Array.from({ length: 56 }, (_, i) => String(i + 1));
@@ -60,12 +67,12 @@ export async function moderationView(container: HTMLElement): Promise<void> {
       previewPane.append(
         el("div", { class: "actions" },
           actionButton("Banear", async () => {
-            await api.banUser({ userId: currentUserId, reason: "Reseñas falsas" });
-            await renderPreview();
+            await api.banUser({ userId: currentUserId, reason: "Reseñas falsas (campaña detectada)" });
+            await Promise.all([renderPreview(), refreshLogs(), refreshUserList()]);
           }),
           actionButton("Desbanear", async () => {
             await api.unbanUser(currentUserId);
-            await renderPreview();
+            await Promise.all([renderPreview(), refreshLogs(), refreshUserList()]);
           })
         )
       );
@@ -74,22 +81,49 @@ export async function moderationView(container: HTMLElement): Promise<void> {
     }
   }
 
+  async function refreshUserList(): Promise<void> {
+    const current = currentUserId;
+    const u = await api.user(current);
+    if (u.user) {
+      const opt = userSelect.querySelector<HTMLOptionElement>(`option[value="${current}"]`);
+      if (opt) opt.textContent = `#${u.user.id} ${u.user.name}${u.user.banned ? " [baneado]" : ""}`;
+    }
+  }
+
   userSelect.addEventListener("change", () => {
     currentUserId = userSelect.value;
     void renderPreview();
   });
 
-  container.append(card("Seleccionar usuario", userSelect), previewPane);
-
   const fraudPane = el("div", { class: "detail-pane" });
-  const authorInput = el("input", { type: "text", class: "input", placeholder: "Ej. Gabriel García Márquez", value: "Gabriel García Márquez" });
+  const authorSelect = el("select", { class: "user-select" }, el("option", { value: "" }, "Elegí un autor…"));
   const checkBtn = el("button", { type: "button", class: "btn" }, "Analizar autor");
+  checkBtn.disabled = true;
   const fraudResult = el("div", { class: "fraud-result" });
 
-  async function checkAuthor(): Promise<void> {
-    fraudResult.innerHTML = "Analizando...";
+  // Poblarlo cuando se carguen los usuarios (autores → books/notificaciones).
+  async function fillAuthors(): Promise<void> {
     try {
-      const { fraudAuthorAnomaly } = await api.fraudAuthorAnomaly(authorInput.value.trim());
+      const authorsSet = new Set<string>();
+      const { topBooks } = await api.topBooks(200);
+      for (const b of topBooks) authorsSet.add(b.authorName);
+      authorSelect.innerHTML = "";
+      authorSelect.append(el("option", { value: "" }, "Elegí un autor…"));
+      for (const name of authorsSet) {
+        authorSelect.append(el("option", { value: name }, name));
+      }
+      checkBtn.disabled = false;
+    } catch {
+      checkBtn.disabled = true;
+    }
+  }
+
+  async function checkAuthor(): Promise<void> {
+    const name = authorSelect.value;
+    fraudResult.innerHTML = name ? "Analizando..." : "";
+    if (!name) return;
+    try {
+      const { fraudAuthorAnomaly } = await api.fraudAuthorAnomaly(name);
       fraudResult.innerHTML = "";
       if (!fraudAuthorAnomaly) {
         fraudResult.append(el("p", { class: "muted" }, "Sin datos para el autor."));
@@ -98,31 +132,31 @@ export async function moderationView(container: HTMLElement): Promise<void> {
       if (fraudAuthorAnomaly.suspicious) {
         const flagged = fraudAuthorAnomaly.flaggedBooks ?? [];
         fraudResult.append(
-          el("div", { class: "badge badge-danger" }, `⚠️ Anomalía detectada en ${flagged.length} libro(s)`),
+          el("div", { class: "badge badge-danger" }, `Anomalía detectada en ${flagged.length} libro(s)`),
           el("ul", { class: "review-list" },
             ...flagged.map((b) => el("li", {}, `«${b.title}»: ${b.reason}`))
           )
         );
       } else {
-        fraudResult.append(el("div", { class: "badge badge-ok" }, "✓ Sin anomalías detectadas para este autor."));
+        fraudResult.append(el("div", { class: "badge badge-ok" }, "Sin anomalías detectadas para este autor."));
       }
     } catch (err) {
       renderError(fraudResult, err);
     }
   }
 
+  authorSelect.addEventListener("change", () => void checkAuthor());
   checkBtn.addEventListener("click", () => void checkAuthor());
   fraudPane.append(
-    el("div", { class: "form-row" }, authorInput, checkBtn),
+    el("div", { class: "form-row" }, authorSelect, checkBtn),
     fraudResult
   );
   container.append(card("Detección de anomalías por autor (Fraude)", fraudPane));
 
-  const logs = el("div", { class: "detail-pane" });
   container.append(card("Auditoría de baneos", logs));
   await loadUsers();
-  await renderLogs(logs);
-  await checkAuthor();
+  await fillAuthors();
+  await refreshLogs();
 }
 
 async function renderLogs(target: HTMLElement): Promise<void> {

@@ -178,6 +178,55 @@ const BOOK_REVIEWS: Record<string, MockReview[]> = {
     rev("50", "10", "10", 4, "Cruda y necesaria."),
     rev("51", "11", "10", 5, "Un clásico latinoamericano."),
   ],
+  // Extra books (11-20) para que el Top 50 tenga volumen; algunos con <3 reseñas
+  // para mostrar el caso "Insuficiente" y riesgo alto (poca data).
+  "11": [
+    rev("60", "7",  "11", 5, "Intensa y conmovedora."),
+    rev("61", "8",  "11", 4, "Muy buena crónica de guerra."),
+    rev("62", "9",  "11", 5, "Un clásico que sigue vigente."),
+    rev("63", "10", "11", 4, "Narrativa sólida."),
+    rev("64", "11", "11", 5, "Imprescindible."),
+  ],
+  "12": [
+    rev("65", "7",  "12", 3, "Interesante, algo irregular."),
+    rev("66", "8",  "12", 4, "Buen libro de cuentos."),
+    rev("67", "9",  "12", 4, "Se lee rápido y bien."),
+  ],
+  "13": [
+    rev("68", "7",  "13", 5, "Una joya."),
+    rev("69", "8",  "13", 5, "Me encantó."),
+  ],
+  "14": [
+    rev("70", "7",  "14", 5, "Excelente."),
+  ],
+  "15": [
+    rev("71", "9",  "15", 4, "Muy recomendable."),
+    rev("72", "10", "15", 4, "Buen ritmo."),
+    rev("73", "11", "15", 5, "Gran historia."),
+    rev("74", "12", "15", 3, "Correcta."),
+  ],
+  "16": [
+    rev("75", "9",  "16", 5, "Genial."),
+    rev("76", "10", "16", 4, "Muy bueno."),
+  ],
+  "17": [
+    rev("77", "10", "17", 3, "Entretenido."),
+  ],
+  "18": [
+    rev("78", "11", "18", 5, "Una obra importante."),
+    rev("79", "12", "18", 5, "Sobresaliente."),
+    rev("80", "13", "18", 4, "Muy bien logrado."),
+  ],
+  "19": [
+    rev("81", "12", "19", 5, "Excelente ensayo."),
+    rev("82", "13", "19", 4, "Iluminador."),
+  ],
+  "20": [
+    rev("83", "13", "20", 5, "Imperdible."),
+    rev("84", "14", "20", 5, "La mejor de su autor."),
+    rev("85", "15", "20", 4, "Grande."),
+    rev("86", "16", "20", 5, "Fascinante."),
+  ],
 };
 
 function calcAverage(reviews: MockReview[]): number {
@@ -224,10 +273,20 @@ export const SEED_BOOKS: MockBook[] = [
   makeBook("4",  "Ficciones",                  "Jorge Luis Borges"),
   makeBook("5",  "La casa de los espíritus",   "Isabel Allende"),
   makeBook("6",  "Conversación en La Catedral","Mario Vargas Llosa"),
-  makeBook("7",  "Bestiario",                "Julio Cortázar"),
-  makeBook("8",  "El Aleph",                 "Jorge Luis Borges"),
-  makeBook("9",  "Eva Luna",                 "Isabel Allende"),
-  makeBook("10", "La ciudad y los perros",   "Mario Vargas Llosa"),
+  makeBook("7",  "Bestiario",                  "Julio Cortázar"),
+  makeBook("8",  "El Aleph",                   "Jorge Luis Borges"),
+  makeBook("9",  "Eva Luna",                   "Isabel Allende"),
+  makeBook("10", "La ciudad y los perros",     "Mario Vargas Llosa"),
+  makeBook("11", "Crónica de una muerte anunciada",  "Gabriel García Márquez"),
+  makeBook("12", "Los funerales de la Mamá Grande",  "Gabriel García Márquez"),
+  makeBook("13", "El libro de arena",               "Jorge Luis Borges"),
+  makeBook("14", "Del amor y otros demonios",       "Gabriel García Márquez"),
+  makeBook("15", "Paula",                           "Isabel Allende"),
+  makeBook("16", "El zorro: empieza la leyenda",    "Isabel Allende"),
+  makeBook("17", "Pantaleón y las visitadoras",     "Mario Vargas Llosa"),
+  makeBook("18", "La casa verde",                   "Mario Vargas Llosa"),
+  makeBook("19", "Cuentos completos",               "Julio Cortázar"),
+  makeBook("20", "El perseguidor",                  "Julio Cortázar"),
 ];
 
 // ─── Ban audit logs ───────────────────────────────────────────────────────────

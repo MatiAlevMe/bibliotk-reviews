@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { fmtAverage } from "../src/ui";
+import { fmtAverage, riskLabel, riskClass } from "../src/ui";
 import { state, ROLE_ACCOUNTS } from "../src/state";
 import { mockApi, resetMockData } from "../src/mock-client";
 
@@ -11,6 +11,16 @@ describe("fmtAverage", () => {
 
   it("passes through the Insuficientes string", () => {
     expect(fmtAverage("Insuficientes")).toBe("Insuficientes");
+  });
+});
+
+describe("risk labels (Spanish presentation)", () => {
+  it("maps confidence to risk in Spanish", () => {
+    expect(riskLabel("low")).toBe("Alto");
+    expect(riskLabel("medium")).toBe("Medio");
+    expect(riskLabel("high")).toBe("Bajo");
+    expect(riskClass("low")).toBe("high"); // poca data → badgete peligro
+    expect(riskClass("high")).toBe("low");  // mucha data → badge seguro
   });
 });
 
@@ -65,6 +75,16 @@ describe("mockApi", () => {
     expect(topBooks.length).toBe(5);
     expect(topBooks[0].title).toBeDefined();
     expect(typeof topBooks[0].cachedAverage).toBe("number");
+  });
+
+  it("expands the mock catalog to 20 books (top 50 has volume)", async () => {
+    const { topBooks } = await mockApi.topBooks(50);
+    expect(topBooks.length).toBeGreaterThanOrEqual(20);
+    const titles = topBooks.map((b) => b.title);
+    expect(titles).toContain("Crónica de una muerte anunciada");
+    expect(titles).toContain("Paula");
+    // cada libro expone su autor para la columna del top 50
+    for (const b of topBooks) expect(b.authorName).toBeTruthy();
   });
 
   it("creates a review and updates book aggregates", async () => {
