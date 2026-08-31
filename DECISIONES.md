@@ -136,8 +136,9 @@ El enunciado dice: "Si tu arquitectura está bien hecha esto es barato; si te sa
 No existe un estado **individual** "falsa" en una reseña: el sistema no etiqueta reseñas sueltas. Lo que existe:
 - **`FraudDetector` / `fraudAuthorAnomaly`** marcan **señales agregadas** (mayoría 5★ de cuentas recientes, distribución anómala) a nivel libro/autor → "sospechoso", no "falsa".
 - **El baneo de moderación** (`ban!` con `reason`) oculta retroactivamente **todas** las reseñas del usuario baneado (`hidden: true`) con un `ban_reason`.
+- **La moderación de reseña individual** (`hideReview`/`showReview` con `moderation_reason`) oculta **una** reseña puntual sin tocar la cuenta del autor ni crear logs de ban.
 
-**Decisión:** No inventar un campo "falsa / legítima". La pregunta "por qué está oculta" se responde con `ban_reason` del usuario baneado, y "por qué es sospechosa" con el reporte de fraude. Así no se abre la caja de «¿es esta reseña en particular falsa?», que no es comprobable per-review.
+**Decisión actualizada (2026-08-31):** se agregó la moderación de reseña individual como complemento al ban. La pregunta "por qué está oculta" se responde con **`moderation_reason`** (si fue oculta individualmente) o con `ban_reason` del usuario (si fue por ban). La pregunta "por qué es sospechosa" la responde el reporte de fraude. El estado individual "falsa/legítima" sigue sin inventarse: **no** se agrega una bandera "falsa" booleana, sino una razón de moderación (string) que el schema expone y Soporte lee.
 
 ### Dónde mostrar las reseñas ocultas (vista Libro)
 
@@ -170,3 +171,26 @@ Se agregó columna **Autor** y el mock pasó de 10 a **20 libros** para que el T
 ### Detección de anomalías: selector en vez de input
 
 **Decisión:** el "Analizar autor" pasó de un input de texto libre a un **selector** con los autores presentes en el catálogo. Evita errores de tipeo y confirma que el autor existe. (En la API se mantiene `fraudAuthorAnomaly(authorName:)` para uso programático.)
+
+### Banear la cuenta vs. ocultar UNA reseña (recomendación de producto)
+
+**Pregunta del repo brief:** ¿hace falta poder "banear" reseñas individuales además de banear al usuario?
+
+**Recomendación implementada (2026-08-31):** sí, en producciones con moderación real la cuenta de un autor puede ser valiosa (muchas reseñas legítimas) y una sola reseña infractora (spam, texto ofensivo, reseña de otra cosa) no justifica un ban. Por eso:
+
+- **`hideReview(id, reason)`** y **`showReview(id)`** ocultan/restauran **una** reseña y guardan `moderation_reason` (por qué) + `hidden_by` (quién moderó).
+- La reseña oculta **sale del promedio** inmediatamente (`Book#recalculate!` con el libro bloqueado, igual que el ban) y aparece en el panel de ocultas del autor.
+- **No** marca al usuario como baneado, **no** le crea `ModerationNotification` (evita ruido) y **no** genera `BanAuditLog`. Queda para auditoría el `hidden_by` + `moderation_reason` en la propia reseña.
+- El `ban!` de cuenta sigue existiendo para perfiles sistemáticos (cluster 5★ de cuentas frescas, spam reincidente).
+
+**Cuándo usar cada uno:** ocultar reseña individual para faltas puntuales; ban de cuenta para patrones (autorias completas falsas, evasión de ban). La UI de Moderación ofrece ambos ("Ocultar (moderación)" por reseña y el ban/desban por usuario).
+
+### Navegación y visibilidad de un usuario baneado
+
+**Pregunta:** al banear a un usuario/autor, ¿debe dejar de ver otras secciones?
+
+**Decisión:** **El baneado mantiene acceso de solo lectura a todo el catálogo** (Top 50, detalle de libros, paneles de autor con su propia data oculta/notificaciones). No se le bloquean rutas: un baneo no es una exclusión de plataforma, y mostrarle su data de autor es informativo (ve exactamente qué quedó oculto y por qué). Lo que **pierde** son las acciones privilegiadas:
+- **Crear/editar reseñas:** la UI no muestra el formulario (aviso "Tu cuenta está baneada") y el backend igualmente devuelve las nuevas reseñas como `hidden: true`.
+- **Moderación y ban de otros:** exclusivos de `role: admin`, no del estado de ban.
+
+Este matiz (lectura OK, escritura negada + motivo + apelación a soporte@bibliotk.com) está reflejado en `views/top.ts` (card "Tu cuenta fue baneada") y `views/book.ts` (aviso en lugar del form).

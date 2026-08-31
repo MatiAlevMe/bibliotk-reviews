@@ -84,6 +84,7 @@ Hoy los tres umbrales están implementados como escaneo **on-demand** (`bin/rake
 | Reviews/min por libro | >50 en 1 hora | Alertar a moderación | Moderación | `Review` create / `AnomalyWatcher#check_review_bursts` |
 | Average delta por libro | >1.0 en 24h | Alertar a moderación | Moderación | `Book#recalculate!` / `AnomalyWatcher#check_average_deltas` |
 | Ratio banned/total reviewers | >5% en 7 días | Alertar a growth | Growth | `User#ban!` / `AnomalyWatcher#check_banned_ratio` |
+| Reseñas ocultas individualmente (hideReview) | +20/hora o >2 en el mismo libro | Alertar a moderación (posible ataque a un libro) | Moderación | `Review#hide_by_moderation!` / `show_by_moderation!` |
 
 ---
 

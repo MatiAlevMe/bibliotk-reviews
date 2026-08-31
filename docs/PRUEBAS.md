@@ -231,6 +231,37 @@ curl -s -X POST http://localhost:3000/graphql \
 
 ---
 
+## Prueba 11b: Moderar UNA reseña individual (hide/show, sin banear al autor)
+
+Ocultar una sola reseña infractora sin tocar la cuenta del autor ni generar log de ban:
+
+**Paso 1 - Ocultar:**
+```bash
+curl -s -X POST http://localhost:3000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"mutation { hideReview(id:1, reason:\"Contenido inapropiado\") }"}' | jq
+```
+
+**Esperado:** `hideReview: true`. La reseña sale del promedio del libro al instante, y en `moderationStatus` aparece con `banReason: "Contenido inapropiado"` (ahora el campo refleja `moderation_reason` de la reseña o el `ban_reason` del usuario).
+
+**Paso 2 - Verificar que el autor SIGUE activo** (la cuenta no fue baneada):
+```bash
+curl -s -X POST http://localhost:3000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ user(id:2) { id name banned } }"}' | jq
+```
+**Esperado:** `banned: false`.
+
+**Paso 3 - Restaurar:**
+```bash
+curl -s -X POST http://localhost:3000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"mutation { showReview(id:1) }"}' | jq
+```
+**Esperado:** `showReview: true`, el promedio vuelve a incluir la reseña y `moderation_reason` se limpia.
+
+---
+
 ## Prueba 12: Auditoría de baneos
 
 Ver historial de baneos.
@@ -309,9 +340,10 @@ En `http://localhost:5173` (tras `npm run dev`):
 |-------|---------------|--------------|
 | Roles (login) | cualquiera | Switchear admin/autor/lector y cuenta |
 | Top 50 | cualquiera | Orden por promedio, columna Autor y Riesgo (Alto/Medio/Bajo), `displayAverage` |
-| Libro | lector/autor | Detalle + crear/**editar/eliminar** tu reseña + fraud check + "ver reseñas ocultas" (admin/autor) |
-| Moderación | admin | Ban preview → banear → desbanear + auditoría (refresca al instante) + anomalía por autor (selector) |
+| Libro | lector/autor | Detalle + crear/**editar/eliminar** tu reseña + fraud check + "ver reseñas ocultas" (admin/autor) + admin puede **"Ocultar (moderación)"** una reseña sin banear y **restaurar** desde el panel ocultas |
+| Moderación | admin | Ban preview → banear → desbanear + auditoría (refresca al instante) + anomalía por autor (selector) + alternar ban/desban repetido sin recargar |
 | Panel autor | autor | Notificaciones + reseñas ocultas |
+| Lector baneado | lector | Card "Tu cuenta fue baneada" con motivo + apelación; en Libro, aviso en lugar del form de reseña |
 | Sistema | cualquiera | Ambientes + comando de reset de BD |
 
 El demo refleja los cambios directamente en la BD de desarrollo, así que podés probar cada flujo (baneo, ocultar reseñas, notificaciones) y después regenerar la BD con `node npm run db:reset`.
@@ -336,7 +368,7 @@ La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations 
 3. **Desbanear** — reversa: entra de nuevo y los promedios vuelven.
 4. **Detección de fraude** — en "Analizar autor" elegí `Jorge Luis Borges` del selector → marca ⚠️ anomalía en «El Aleph» (cluster 5★ de cuentas recientes de ejemplo).
 5. **Top 50** — promedios redondeados a 1 decimal, "Insuficiente" si <3 reseñas, columna "Riesgo" (Alto/Medio/Bajo) y Autor.
-6. **Libro → Moderación** — botón "Ver reseñas ocultas por moderación" (admin o autor del libro) con el motivo de cada ban.
+6. **Libro → Moderación** — botón "Ver reseñas ocultas por moderación" (admin o autor del libro) con el motivo de cada oculta; **como admin** podés **"Ocultar (moderación)"** cualquier reseña visible (pide motivo) y **restaurarla** desde el panel de ocultas — todo sin banear la cuenta del autor.
 7. **Sistema** — botón reset mock + comando CLI documentado.
 
 ### Autor (ej. "García Márquez" #2)
@@ -348,7 +380,7 @@ La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations 
 2. **No podés reseñar el mismo libro dos veces** (unicidad): la app te lo indica y te muestra "Editar"/"Eliminar" en tu reseña de la lista.
 3. **Editar/eliminar tu reseña** — en tu reseña aparece "Editar" (cambia rating/texto en línea) y "Eliminar" (pide confirmación). Ambos recalculan el promedio del libro.
 4. **Top 50** — el libro reseñado sube de posición en el ranking.
-5. **"Sobre tus reseñas"** — si te banearon de moderación, al entrar (home) ves una card con los avisos de en qué libros tus reseñas quedaron ocultas y el motivo.
+5. **"Tu cuenta fue baneada"** — si te banearon de moderación, al entrar (home) ves una card clara: badge **Baneado**, el **motivo** del ban, que tus reseñas quedaron ocultas y cómo apelar a `soporte@bibliotk.com`, seguida de la lista "Tus reseñas ocultas". En la vista Libro no ves el form de crear/editar (solo el aviso).
 
 ### Notificación al usuario baneado (backend)
 Cuando `banUser` esconde las reseñas de un usuario, además de notificar al **autor**, se crea una notificación **para el propio usuario baneado** por cada libro afectado:

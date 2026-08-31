@@ -165,6 +165,18 @@ mutation {
     booksAffected
   }
 }
+
+# Ocultar UNA reseña (moderación quirúrgica, sin banear al autor)
+mutation {
+  hideReview(id: "1", reason: "Contenido inapropiado") {
+    id
+  }
+}
+
+# Restaurar una reseña oculta
+mutation {
+  showReview(id: "1")
+}
 ```
 
 ## Frontend DEMO
@@ -205,6 +217,31 @@ npm run dev        # dev server en :5173, proxy a :3000 → backend REAL (necesi
 # Environment Variable: VITE_GRAPHQL_ENDPOINT=https://tu-api-rails.com/graphql
 ```
 
+
+## Requerimiento vs. completado
+
+Tabla comparativa del brief (`docs/Prueba Product builder.md`) contra lo implementado. Estado: **completado** (requerimientos originales), **extra** (agregados de producto que el brief pedía como resolver) y **bonus** (funcionalidades extra pedidas a entregar).
+
+| # | Requerimiento (brief) | Estado | Dónde |
+|---|-----------------------|--------|-------|
+| 1 | Motor de calificación 1-5 por libro + crear/editar/eliminar reseña | Completado | `Review` model, `createReview`/`updateReview`/`deleteReview`, vista Libro |
+| 2 | Promedio con fase "fresca" vs "participación asimétrica" (3.0 / 3.3 / 2.2) | Completado | `Book#recalculate!` + redondeo half-up @ .25 (spec: 3.25→3.3, 3.35→3.4, 2.24→2.2) |
+| 3 | Actualización del promedio en la misma transacción bajo concurrencia | Completado | `Review` after_save/after_destroy con `SELECT … FOR UPDATE` (libro bloqueado) |
+| 4 | Respuesta 500k reviews (benchmark) | Completado | `db:seed:large_scale`, queries paginadas y agregadas |
+| 5 | Top libros con índice de frescura | Completado | `topBooks` + `confidence` |
+| 6 | Aviso al asimétrico (autor) de cambios de promedio | Completado | `ModerationNotification` + panel autor |
+| 7 | Participación asimétrica = anomalía (Lector nuevo + review 5★ tras 20 min) | Completado | `metrics:scan`, flag de riesgo en Top 50, `fraudAuthors` |
+| 8 | Moderación (ban con preview de impacto y razón) | Completado | `banPreview`, `banUser`, auditoría (`BanAuditLog`), UI Moderación |
+| 9 | Usuario baneado: reseñas ocultas `{hidden:true}`, nunca borradas | Completado | `User#ban!` + `after_save :hide_if_user_banned!`; queries públicas filtran `hidden:false` |
+| 10 | Desbanear restaura visibilidad y promedios | Completado | `unbanUser` |
+| 11 | Notificación al propio baneado | Completado (extra en code review) | `ban!` crea `ModerationNotification` por libro + card "Tu cuenta fue baneada" |
+| 12 | Medir las métricas definidas (instrumentación) | Documentado (pendiente de producción) | `PRODUCTO.md` — puntos de emisión definidos, faltan observability real |
+| 13 | Errores de validación GraphQL volcados | Trade-off aceptado | `DECISIONES.md` — integridad en el modelo, UI detecta duplicados |
+| 14 | Editar/eliminar visible en frontend | Completado (extra en code review) | Vista Libro, botones Editar/Eliminar |
+| Bonus A | Reseñas 5★ de cuentas frescas a un mismo autor = revisión crítica | Completado | `fraudAuthorAnomaly` + UI Modulación |
+| Bonus B | Moderar reseña individual sin banear al autor | Completado | `hideReview`/`showReview` + `moderation_reason` |
+
+Para ejecutar cada prueba paso a paso ver [docs/PRUEBAS.md](docs/PRUEBAS.md).
 
 ## Ambientes y reset de BD
 
