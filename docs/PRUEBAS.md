@@ -367,13 +367,13 @@ La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations 
 2. **Banear** — escribí un motivo opcional (default "Reseñas falsas") y banéá → verás el cambio en "Auditoría de baneos" (se refresca al instante) y las reseñas del usuario dejan de contar. Si el usuario ya está baneado, solo se ofrece "Desbanear".
 3. **Desbanear** — reversa: entra de nuevo y los promedios vuelven.
 4. **Detección de fraude** — en "Analizar autor" elegí `Jorge Luis Borges` del selector → marca ⚠️ anomalía en «El Aleph» (cluster 5★ de cuentas recientes de ejemplo).
-5. **Top 50** — promedios redondeados a 1 decimal, "Insuficiente" si <3 reseñas, columna "Riesgo" (Alto/Medio/Bajo) y Autor.
+5. **Top 50** — promedios redondeados a 1 decimal, "Insuficiente" si <3 reseñas, columna "Riesgo" (Alto/Medio/Bajo), Autor y controles de filtrado (checkbox "Esconder libros con reseñas insuficientes" y selector por nivel de riesgo).
 6. **Libro → Moderación** — botón "Ver reseñas ocultas por moderación" (admin o autor del libro) con el motivo de cada oculta; **como admin** podés **"Ocultar (moderación)"** cualquier reseña visible (pide motivo) y **restaurarla** desde el panel de ocultas — todo sin banear la cuenta del autor.
 7. **Sistema** — botón reset mock + comando CLI documentado.
 
 ### Autor (ej. "García Márquez" #2)
 1. **Panel autor** — banéá (como admin) a un lector que reseñó sus libros (p.ej. Reader 1 #7 en «Cien años de soledad») y luego entrá como García Márquez: verás la **notificación de moderación** (`4.x → 2.x`, motivo "moderación de cuenta") y las **reseñas ocultas** de sus libros.
-2. **Libro** — detalle con promedio, riesgo, fraud check y sus reseñas visibles.
+2. **Libro** — detalle con promedio numérico exacto (incluso con <3 reseñas, acompañado de badge "Reseñas insuficientes"), riesgo, fraud check y sus reseñas visibles.
 3. **Autor baneado** — si el propio autor es baneado (Moderación → banear #2), su home **Top 50** y su Panel autor muestran la card **"Tu cuenta fue baneada"** (badge, motivo, apelación a `soporte@bibliotk.com`), igual que a un lector.
 
 ### Lector (ej. Reader 1 #7 o Reader 10 #16)
