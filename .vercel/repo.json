@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_HNkyMUzm1ohlU15yEcXSNHuxLIeZ",
+      "name": "bibliotk-reviews",
+      "directory": "frontend",
+      "orgId": "team_CCQoVoEVzErvbe5CQx1rCDcI"
+    }
+  ]
+}
