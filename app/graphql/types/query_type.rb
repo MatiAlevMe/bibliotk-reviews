@@ -68,7 +68,7 @@ module Types
     end
 
     # Moderation status for a book (author can see hidden reviews)
-    field :moderation_status, GraphQL::Types::JSON, null: true do
+    field :moderation_status, Types::ModerationStatusType, null: true do
       argument :book_id, ID, required: true
     end
 
@@ -85,6 +85,7 @@ module Types
         hidden_reviews: hidden_reviews.map { |r|
           {
             id: r.id,
+            user_id: r.user_id,
             user_name: r.user.name,
             rating: r.rating,
             hidden_at: r.updated_at,
