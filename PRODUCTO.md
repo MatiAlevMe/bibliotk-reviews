@@ -47,7 +47,7 @@ El autor puede consultar sus notificaciones via query `notifications(userId:)`.
 - Soporte puede ver reseñas ocultas con el motivo via query `moderationStatus(bookId:)`
 - No hay tickets de "¿dónde está mi reseña?" porque técnicamente no desaparece y además el afectado recibe aviso
 
-**Por qué esta decisión:** La alternativa (borrar la reseña) crea un黑洞 de información. El usuario no sabe qué pasó, soporte no puede responder, y el autor no sabe por qué bajó el promedio. Con `hidden: true` todos los actores tienen visibilidad.
+**Por qué esta decisión:** La alternativa (borrar la reseña) crea un limbo de información. El usuario no sabe qué pasó, soporte no puede responder, y el autor no sabe por qué bajó el promedio. Con `hidden: true` todos los actores tienen visibilidad.
 
 ### 5. Dirección: "Que no se vuelva a repetir"
 
@@ -99,7 +99,7 @@ Hoy los tres umbrales están implementados como escaneo **on-demand** (`bin/rake
 
 ## Cambiaría si esto fuera mi producto
 
-**El umbral de 3 reseñas.** Lo cambiaría a un sistema de confianza dinámico: si el libro tiene <5 reseñas, el promedio se muestra con un asterisco y tooltip "Promedio basado en pocas reseñas". Esto le da al usuario la información completa y le permite decidir si confía o no. El umbral fijo de 3 es una simplificación útil para este challenge, pero en producción_prefiero la transparencia.
+**El umbral de 3 reseñas.** Lo cambiaría a un sistema de confianza dinámico: si el libro tiene <5 reseñas, el promedio se muestra con un asterisco y tooltip "Promedio basado en pocas reseñas". Esto le da al usuario la información completa y le permite decidir si confía o no. El umbral fijo de 3 es una simplificación útil para este challenge, pero en producción prefiero la transparencia.
 
 **El redondeo half-up.** Lo mantengo. Es el estándar y no hay razón para cambiarlo.
 
