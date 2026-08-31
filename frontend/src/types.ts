@@ -25,6 +25,8 @@ export interface User {
   name: string;
   email: string;
   banned: boolean;
+  banReason?: string | null;
+  bannedAt?: string | null;
 }
 
 export interface BanImpactDetail {
