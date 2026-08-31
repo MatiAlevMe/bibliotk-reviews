@@ -407,6 +407,17 @@ export const mockApi = {
           };
           notifications.push(notif);
         }
+        // Notificar al usuario baneado que su reseña en este libro quedó oculta.
+        notifications.push({
+          id: String(nextNotifId++),
+          userId: input.userId,
+          bookId: b.id,
+          previousAverage: prevAvg,
+          newAverage: b.cachedAverage,
+          reason: `Tu reseña en «${b.title}» quedó oculta por moderación de cuenta (motivo: ${input.reason || "no especificado"}). Podés verla en tu perfil; ya no cuenta para el promedio del libro.`,
+          readAt: null,
+          book: { title: b.title },
+        });
       }
     }
 
