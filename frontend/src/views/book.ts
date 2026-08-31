@@ -1,7 +1,7 @@
 import { api } from "../api";
 import type { Book, Review } from "../types";
 import { state } from "../state";
-import { el, fmtAverage, renderError, card } from "../ui";
+import { el, fmtAverage, renderError, card, riskLabel, riskClass } from "../ui";
 
 export async function bookView(container: HTMLElement): Promise<void> {
   container.innerHTML = "";
@@ -22,27 +22,29 @@ export async function bookView(container: HTMLElement): Promise<void> {
       detail.append(el("p", { class: "muted" }, "Seleccioná un libro."));
       return;
     }
-    void renderBookInfo(detail, selected.id);
+    void renderBookInfo(detail, selected);
   }
 
-  async function renderBookInfo(target: HTMLElement, bookId: string): Promise<void> {
+  async function renderBookInfo(target: HTMLElement, book: Book): Promise<void> {
     try {
       const [bookRes, reviewsRes, fraudRes] = await Promise.all([
-        api.book(bookId),
-        api.bookReviews(bookId, false),
-        api.fraudCheck(bookId),
+        api.book(book.id),
+        api.bookReviews(book.id, false),
+        api.fraudCheck(book.id),
       ]);
-      const book = bookRes.book;
+      const fullBook = bookRes.book;
       const reviews = reviewsRes.bookReviews;
       target.innerHTML = "";
 
       const info = el("div", { class: "book-info" });
-      if (book) {
+      if (fullBook) {
         info.append(
-          el("p", {}, `Autor: ${book.authorName}`),
-          el("p", { class: "avg" }, `Promedio: ${fmtAverage(book.displayAverage)}`),
-          el("p", {}, `Confianza: `, el("span", { class: `badge ${book.confidence}` }, book.confidence)),
-          el("p", {}, `Reseñas: ${book.cachedReviewsCount} total / ${book.cachedNonBannedCount} válidas`)
+          el("p", {}, `Autor: ${fullBook.authorName}`),
+          el("p", { class: "avg" }, `Promedio: ${fmtAverage(fullBook.displayAverage)}`),
+          el("p", {},
+            "Riesgo: ",
+            el("span", { class: `badge ${riskClass(fullBook.confidence)}` }, riskLabel(fullBook.confidence))),
+          el("p", {}, `Reseñas: ${fullBook.cachedReviewsCount} total / ${fullBook.cachedNonBannedCount} válidas`)
         );
       }
       target.append(card("Información", info));
@@ -71,14 +73,16 @@ export async function bookView(container: HTMLElement): Promise<void> {
       }
       target.append(card("Reseñas visibles", reviewList));
 
-      target.append(addReviewForm(bookId, actor.userId, actor.userName, refresh));
+      const canSeeHidden = actor.role === "admin" || actor.userName === book.authorName;
+      if (canSeeHidden) {
+        target.append(await hiddenReviewsPane(book.id, book.authorName, actor));
+      }
+
+      target.append(addReviewForm(book.id, actor.userId, actor.userName, () =>
+        renderBookInfo(target, book)));
     } catch (err) {
       renderError(target, err);
     }
-  }
-
-  async function refresh(): Promise<void> {
-    await renderBookInfo(detail, currentBookId);
   }
 
   async function loadBooks(): Promise<void> {
@@ -116,6 +120,65 @@ function reviewItem(r: Review): HTMLElement {
   return li;
 }
 
+/**
+ * Panel colapsable de reseñas ocultas por moderación. Solo lo ve el admin o el
+ * autor del libro. "Falsas" no es un estado individual: una reseña se oculta
+ * porque su autor fue baneado por moderación (ban_reason) — acá se muestra ese motivo.
+ */
+async function hiddenReviewsPane(bookId: string, authorName: string, actor: { role: string; userName: string }): Promise<HTMLElement> {
+  const box = el("div", { class: "card" });
+  const actorOwnsBook = actor.userName === authorName;
+  const toggle = el("button", { type: "button", class: "btn" }, "Ver reseñas ocultas por moderación");
+  const content = el("div", { class: "detail-pane" });
+
+  toggle.addEventListener("click", async () => {
+    if (content.innerHTML !== "") {
+      content.innerHTML = "";
+      toggle.textContent = "Ver reseñas ocultas por moderación";
+      return;
+    }
+    toggle.disabled = true;
+    content.innerHTML = "Cargando...";
+    try {
+      const res = await api.moderationStatus(bookId);
+      const m = res.moderationStatus;
+      content.innerHTML = "";
+      if (!m || m.hiddenCount === 0) {
+        content.append(el("p", { class: "muted" }, "Sin reseñas ocultas en este libro."));
+      } else {
+        const list = el("ul", { class: "review-list" });
+        for (const h of m.hiddenReviews) {
+          list.append(
+            el("li", {},
+              el("strong", {}, `${"★".repeat(h.rating)} ${h.userName}`),
+              h.banReason
+                ? el("div", { class: "muted" }, `Motivo de moderación: ${h.banReason}`)
+                : el("div", { class: "muted" }, "Sin motivo registrado")
+            )
+          );
+        }
+        content.append(
+          el("p", { class: "muted" }, `${m.hiddenCount} reseña(s) ocultas en «${m.title}».`),
+          list
+        );
+      }
+      toggle.textContent = "Ocultar reseñas ocultas";
+    } catch (err) {
+      renderError(content, err);
+    } finally {
+      toggle.disabled = false;
+    }
+  });
+
+  box.append(el("h3", { class: "card-title" }, "Moderación"),
+    el("p", { class: "muted" },
+      actorOwnsBook
+        ? "Sos el autor de este libro. Las reseñas ocultas no se borran: pertenecen a usuarios baneados y conservan el motivo."
+        : "Vista como admin. Las reseñas ocultas no se borran: pertenecen a usuarios baneados y conservan el motivo."),
+    toggle, content);
+  return box;
+}
+
 function addReviewForm(
   bookId: string,
   userId: string,
@@ -141,9 +204,11 @@ function addReviewForm(
         rating: Number(rating.value),
         body: body.value || undefined,
       });
-      msg.textContent = res.createReview
-        ? `Reseña creada (id ${res.createReview.id}).`
-        : "No se pudo crear (¿ya tenés una reseña para este libro?).";
+      if (res.createReview) {
+        msg.textContent = `Reseña creada (id ${res.createReview.id}) y agregada a la lista abajo.`;
+      } else {
+        msg.textContent = "Ya tenés una reseña para este libro: cada usuario puede reseñar un libro una sola vez.";
+      }
       body.value = "";
       await refresh();
     } catch (err) {

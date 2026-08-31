@@ -29,3 +29,26 @@ export function renderError(container: HTMLElement, err: unknown): void {
 export function fmtAverage(value: number | string): string {
   return typeof value === "number" ? value.toFixed(1) : value;
 }
+
+/**
+ * Presenta la `confidence` del libro como un riesgo en español.
+ * Poca data (low) → riesgo alto de que el promedio no represente; mucha data
+ * (high) → riesgo bajo. Se mantiene el valor de schema (`confidence`) y solo
+ * se traduce a nivel de presentación.
+ */
+export function riskLabel(confidence: "low" | "medium" | "high"): string {
+  switch (confidence) {
+    case "low": return "Alto";
+    case "medium": return "Medio";
+    case "high": return "Bajo";
+  }
+}
+
+export function riskClass(confidence: "low" | "medium" | "high"): string {
+  // low (poca data) → badge "high" de peligro; high (mucha data) → badge "low".
+  switch (confidence) {
+    case "low": return "high";
+    case "medium": return "medium";
+    case "high": return "low";
+  }
+}
