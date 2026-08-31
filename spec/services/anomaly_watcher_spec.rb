@@ -3,6 +3,13 @@ require "rails_helper"
 RSpec.describe AnomalyWatcher do
   let(:book) { create(:book) }
 
+  before do
+    Review.delete_all
+    ModerationNotification.delete_all
+    User.delete_all
+    Book.delete_all
+  end
+
   describe "#check_review_bursts" do
     context "when reviews in last hour exceed threshold" do
       before do
