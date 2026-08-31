@@ -64,17 +64,30 @@ export async function moderationView(container: HTMLElement): Promise<void> {
       );
       previewPane.append(table);
 
+      const banReasonInput = el("input", {
+        type: "text",
+        class: "input",
+        placeholder: "Motivo del ban (opcional)",
+        value: "Reseñas falsas",
+      });
+      const banBtn = actionButton("Banear", async () => {
+        const reason = banReasonInput.value.trim() || "Sin motivo especificado";
+        await api.banUser({ userId: currentUserId, reason });
+        await Promise.all([renderPreview(), refreshLogs(), refreshUserList()]);
+      });
+      const unbanBtn = actionButton("Desbanear", async () => {
+        await api.unbanUser(currentUserId);
+        await Promise.all([renderPreview(), refreshLogs(), refreshUserList()]);
+      });
+
+      // Si el usuario ya está baneado, solo tiene sentido desbanear.
+      const alreadyBanned = users.find((u) => u.id === currentUserId)?.banned;
+      banBtn.disabled = !!alreadyBanned;
+      unbanBtn.disabled = !alreadyBanned;
+      if (alreadyBanned) banReasonInput.style.display = "none";
+
       previewPane.append(
-        el("div", { class: "actions" },
-          actionButton("Banear", async () => {
-            await api.banUser({ userId: currentUserId, reason: "Reseñas falsas (campaña detectada)" });
-            await Promise.all([renderPreview(), refreshLogs(), refreshUserList()]);
-          }),
-          actionButton("Desbanear", async () => {
-            await api.unbanUser(currentUserId);
-            await Promise.all([renderPreview(), refreshLogs(), refreshUserList()]);
-          })
-        )
+        el("div", { class: "form-row" }, banReasonInput, banBtn, unbanBtn)
       );
     } catch (err) {
       renderError(previewPane, err);

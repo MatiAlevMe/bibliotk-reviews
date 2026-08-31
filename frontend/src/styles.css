@@ -124,6 +124,16 @@ th { color: var(--muted); }
 .topbar .msg { display: inline-block; margin-left: 8px; min-height: 0; }
 
 .actions { display: flex; gap: 8px; margin: 10px 0; }
+.form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0; }
+.input {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
 .detail-pane { margin: 8px 0; }
 .account-select, .book-select, .user-select { margin: 6px 0; }
 
