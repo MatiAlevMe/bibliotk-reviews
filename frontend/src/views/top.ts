@@ -10,6 +10,28 @@ export async function topView(container: HTMLElement): Promise<void> {
   try {
     const { topBooks } = await api.topBooks(50);
     await renderMyNotifications(container);
+
+    let hideInsufficient = false;
+    let selectedRisk = "all"; // "all" | "low" | "medium" | "high"
+
+    // Controles de filtrado
+    const filterControls = el("div", { class: "filter-controls card", style: "display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 16px; padding: 12px 16px;" });
+
+    const hideInsufficientLabel = el("label", { style: "display: flex; align-items: center; gap: 6px; cursor: pointer;" });
+    const hideInsufficientCheckbox = el("input", { type: "checkbox" }) as HTMLInputElement;
+    hideInsufficientLabel.append(hideInsufficientCheckbox, "Esconder libros con reseñas insuficientes (< 3)");
+
+    const riskFilterWrap = el("div", { style: "display: flex; align-items: center; gap: 8px;" });
+    const riskSelect = el("select", { class: "risk-select" },
+      el("option", { value: "all" }, "Todos los niveles de riesgo"),
+      el("option", { value: "low" }, "Solo Riesgo Bajo (10+ reseñas)"),
+      el("option", { value: "medium" }, "Solo Riesgo Medio (3-9 reseñas)"),
+      el("option", { value: "high" }, "Solo Riesgo Alto (1-2 reseñas)")
+    ) as HTMLSelectElement;
+    riskFilterWrap.append(el("span", { class: "muted" }, "Nivel de riesgo:"), riskSelect);
+
+    filterControls.append(hideInsufficientLabel, riskFilterWrap);
+
     const table = el("table");
     const head = el("thead");
     head.append(
@@ -24,11 +46,47 @@ export async function topView(container: HTMLElement): Promise<void> {
     );
     table.append(head);
     const tbody = el("tbody");
-    topBooks.forEach((b, i) => tbody.append(bookRow(i + 1, b)));
     table.append(tbody);
+
+    const countInfo = el("p", { class: "muted" });
+
+    function renderFilteredRows() {
+      tbody.innerHTML = "";
+      const filtered = topBooks.filter((b) => {
+        if (hideInsufficient && b.cachedNonBannedCount < 3) {
+          return false;
+        }
+        if (selectedRisk !== "all" && b.confidence !== selectedRisk) {
+          return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.append(el("tr", {}, el("td", { colspan: "6", style: "text-align:center; padding: 16px;" }, "No hay libros que coincidan con los filtros seleccionados.")));
+      } else {
+        filtered.forEach((b, i) => tbody.append(bookRow(i + 1, b)));
+      }
+
+      countInfo.textContent = `Mostrando ${filtered.length} de ${topBooks.length} libros en el catálogo.`;
+    }
+
+    hideInsufficientCheckbox.addEventListener("change", () => {
+      hideInsufficient = hideInsufficientCheckbox.checked;
+      renderFilteredRows();
+    });
+
+    riskSelect.addEventListener("change", () => {
+      selectedRisk = riskSelect.value;
+      renderFilteredRows();
+    });
+
+    renderFilteredRows();
+
     container.append(
+      filterControls,
       table,
-      el("p", { class: "muted" }, `${topBooks.length} libros en el catálogo mock (el backend real lista los mejores 50).`)
+      countInfo
     );
   } catch (err) {
     renderError(container, err);

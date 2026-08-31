@@ -46,7 +46,12 @@ export async function bookView(container: HTMLElement): Promise<void> {
       if (fullBook) {
         info.append(
           el("p", {}, `Autor: ${fullBook.authorName}`),
-          el("p", { class: "avg" }, `Promedio: ${fmtAverage(fullBook.displayAverage)}`),
+          el("p", { class: "avg" },
+            `Promedio: ${fmtAverage(fullBook.cachedAverage)}`,
+            fullBook.cachedNonBannedCount < 3
+              ? el("span", { class: "badge high", style: "margin-left: 8px;" }, "Reseñas insuficientes")
+              : ""
+          ),
           el("p", {},
             "Riesgo: ",
             el("span", { class: `badge ${riskClass(fullBook.confidence)}` }, riskLabel(fullBook.confidence))),
