@@ -81,8 +81,10 @@ export async function moderationView(container: HTMLElement): Promise<void> {
       });
 
       // Si el usuario ya está baneado, solo tiene sentido desbanear.
-      const alreadyBanned = users.find((u) => u.id === currentUserId)?.banned;
-      banBtn.disabled = !!alreadyBanned;
+      // Se consulta el estado en vivo (no la copia `users`, que puede estar desactualizada).
+      const currentUser = await api.user(currentUserId);
+      const alreadyBanned = !!currentUser.user?.banned;
+      banBtn.disabled = alreadyBanned;
       unbanBtn.disabled = !alreadyBanned;
       if (alreadyBanned) banReasonInput.style.display = "none";
 
@@ -98,6 +100,12 @@ export async function moderationView(container: HTMLElement): Promise<void> {
     const current = currentUserId;
     const u = await api.user(current);
     if (u.user) {
+      // Mantener la copia local en sync con el estado real para el selector y demás.
+      const entry = users.find((x) => x.id === current);
+      if (entry) {
+        entry.banned = u.user.banned;
+        entry.banReason = u.user.banReason ?? null;
+      }
       const opt = userSelect.querySelector<HTMLOptionElement>(`option[value="${current}"]`);
       if (opt) opt.textContent = `#${u.user.id} ${u.user.name}${u.user.banned ? " [baneado]" : ""}`;
     }
