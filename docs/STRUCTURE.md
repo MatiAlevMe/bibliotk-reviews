@@ -119,7 +119,7 @@ SPA estática (Vite + TypeScript + Vitest) que consume el backend GraphQL vía p
 | `src/state.ts` | Rol activo + `userId` (persistido en `localStorage`) |
 | `src/app.ts` | Shell + router por rol |
 | `src/views/login.ts` | Elegir rol (Admin/Autor/Lector) y cuenta |
-| `src/views/top.ts` | Top 50 con confidence |
+| `src/views/top.ts` | Top 50 con Autor y Riesgo (Alto/Medio/Bajo) |
 | `src/views/book.ts` | Detalle + crear/editar/eliminar reseña + fraud check |
 | `src/views/moderation.ts` | Ban preview → ban/unban + auditoría (Admin) |
 | `src/views/author.ts` | Notificaciones + reseñas ocultas (Autor) |

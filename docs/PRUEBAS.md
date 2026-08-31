@@ -332,7 +332,7 @@ La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations 
 
 ### Admin (Moderación)
 1. **Ban preview** — Moderación → elegí un usuario (ej. «Reader 3» #9) → mirá la tabla Actual / Proyectado / Delta por libro **antes** de banear (no escribe nada).
-2. **Banear** — botón "Banear" → verás el cambio en "Auditoría de baneos" (se refresca al instante) y las reseñas del usuario dejan de contar.
+2. **Banear** — escribí un motivo opcional (default "Reseñas falsas") y banéá → verás el cambio en "Auditoría de baneos" (se refresca al instante) y las reseñas del usuario dejan de contar. Si el usuario ya está baneado, solo se ofrece "Desbanear".
 3. **Desbanear** — reversa: entra de nuevo y los promedios vuelven.
 4. **Detección de fraude** — en "Analizar autor" elegí `Jorge Luis Borges` del selector → marca ⚠️ anomalía en «El Aleph» (cluster 5★ de cuentas recientes de ejemplo).
 5. **Top 50** — promedios redondeados a 1 decimal, "Insuficiente" si <3 reseñas, columna "Riesgo" (Alto/Medio/Bajo) y Autor.
