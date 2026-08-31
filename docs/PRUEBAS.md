@@ -348,7 +348,7 @@ La demo en Vercel corre **sin backend**: resuelve todas las queries y mutations 
 2. **No podés reseñar el mismo libro dos veces** (unicidad): la app te lo indica y te muestra "Editar"/"Eliminar" en tu reseña de la lista.
 3. **Editar/eliminar tu reseña** — en tu reseña aparece "Editar" (cambia rating/texto en línea) y "Eliminar" (pide confirmación). Ambos recalculan el promedio del libro.
 4. **Top 50** — el libro reseñado sube de posición en el ranking.
-5. **"Sobre tus reseñas"** — si te banearon de moderación, al entrar (home) ves una card con los avisos de que tus reseñas en qué libros quedaron ocultas y el motivo.
+5. **"Sobre tus reseñas"** — si te banearon de moderación, al entrar (home) ves una card con los avisos de en qué libros tus reseñas quedaron ocultas y el motivo.
 
 ### Notificación al usuario baneado (backend)
 Cuando `banUser` esconde las reseñas de un usuario, además de notificar al **autor**, se crea una notificación **para el propio usuario baneado** por cada libro afectado:
