@@ -144,5 +144,52 @@ describe("mockApi", () => {
     expect(fraudAuthorAnomaly?.suspicious).toBe(true);
     expect(fraudAuthorAnomaly?.flaggedBooks?.length).toBeGreaterThan(0);
   });
+
+  it("hides a single review by moderation without banning the user", async () => {
+    const { bookReviews } = await mockApi.bookReviews("7");
+    const target = bookReviews[0];
+    expect(target.hidden).toBe(false);
+
+    const res = await mockApi.hideReview({ id: target.id, reason: "Contenido inapropiado" });
+    expect(res.hideReview).toBe(true);
+
+    // El usuario sigue activo.
+    const ownerId = "7";
+    const { user } = await mockApi.user(ownerId);
+    expect(user?.banned).toBe(false);
+
+    // La review aparece como oculta con motivo en moderationStatus.
+    const { moderationStatus } = await mockApi.moderationStatus("7");
+    const hidden = moderationStatus?.hiddenReviews.find((h) => h.id === target.id);
+    expect(hidden).toBeDefined();
+    expect(hidden?.banReason).toBe("Contenido inapropiado");
+  });
+
+  it("restores a hidden review with showReview", async () => {
+    const { bookReviews } = await mockApi.bookReviews("7");
+    const target = bookReviews[0];
+    await mockApi.hideReview({ id: target.id, reason: "Spam" });
+
+    const res = await mockApi.showReview(target.id);
+    expect(res.showReview).toBe(true);
+
+    const after = await mockApi.bookReviews("7");
+    expect(after.bookReviews.find((r) => r.id === target.id)?.hidden).toBe(false);
+  });
+
+  it("banned users cannot create new visible reviews (they get immediately hidden)", async () => {
+    await mockApi.banUser({ userId: "7", reason: "Fraude" });
+    const res = await mockApi.createReview({
+      bookId: "19",
+      userId: "7",
+      rating: 5,
+      body: "nueva",
+    });
+    // like Rails: Review#hide_if_user_banned! → la review queda hidden: true
+    expect(res.createReview?.hidden).toBe(true);
+
+    const after = await mockApi.bookReviews("19");
+    expect(after.bookReviews.find((r) => r.id === res.createReview?.id)).toBeUndefined();
+  });
 });
 

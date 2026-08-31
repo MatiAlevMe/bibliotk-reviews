@@ -93,7 +93,10 @@ function realApi() {
         { userId }
       ),
     user: (id: string) =>
-      gql<{ user: User | null }>(`query { user(id: $id) { id name email banned } }`, { id }),
+      gql<{ user: User | null }>(
+        `query { user(id: $id) { id name email banned banReason bannedAt } }`,
+        { id }
+      ),
     banPreview: (userId: string) =>
       gql<{ banPreview: BanImpact | null }>(
         `query { banPreview(userId: $userId) {
@@ -161,6 +164,16 @@ function realApi() {
     deleteReview: (id: string) =>
       gql<{ deleteReview: boolean }>(
         `mutation ($id: ID!) { deleteReview(id: $id) }`,
+        { id }
+      ),
+    hideReview: (input: { id: string; reason: string }) =>
+      gql<{ hideReview: boolean }>(
+        `mutation ($id: ID!, $reason: String!) { hideReview(id: $id, reason: $reason) }`,
+        input
+      ),
+    showReview: (id: string) =>
+      gql<{ showReview: boolean }>(
+        `mutation ($id: ID!) { showReview(id: $id) }`,
         { id }
       ),
     banUser: (input: { userId: string; reason: string }) =>

@@ -48,6 +48,53 @@ RSpec.describe Review, type: :model do
     end
   end
 
+  describe "single-review moderation (#hide_by_moderation!)" do
+    let(:user) { create(:user) }       # NO baneado
+    let(:book) { create(:book) }
+
+    before do
+      create(:review, user: user, book: book, rating: 5)
+    end
+
+    it "hides only that review, excludes it from the average, and stores the reason" do
+      review = user.reviews.first
+      other_user = create(:user)
+      create(:review, user: other_user, book: book, rating: 1) # visible
+
+      review.hide_by_moderation!(reason: "Spam en texto", performed_by: "moderator")
+
+      expect(review.reload.hidden).to be true
+      expect(review.moderation_reason).to eq("Spam en texto")
+      expect(review.hidden_by).to eq("moderator")
+
+      # el usuario sigue activo y su otra review no se tocó
+      expect(user.reload.banned).to be false
+      # promedio = solo la review visible (1.0)
+      expect(book.reload.cached_average).to eq(1.0)
+    end
+
+    it "is a no-op when already hidden" do
+      review = user.reviews.first
+      review.hide_by_moderation!(reason: "A", performed_by: "admin")
+      before = review.reload
+      review.hide_by_moderation!(reason: "B", performed_by: "admin")
+      expect(review.reload.moderation_reason).to eq("A") # no se sobreescribe
+    end
+
+    it "restores and clears the reason with #show_by_moderation!" do
+      review = user.reviews.first
+      review.hide_by_moderation!(reason: "Spam", performed_by: "admin")
+
+      review.show_by_moderation!
+
+      expect(review.reload.hidden).to be false
+      expect(review.moderation_reason).to be_nil
+      expect(review.hidden_by).to be_nil
+      # vuelve a contar para el promedio (5.0 + la del otro quizá)
+      expect(book.reload.cached_non_banned_count).to be >= 1
+    end
+  end
+
   describe "half-up rounding" do
     let(:book) { create(:book) }
 

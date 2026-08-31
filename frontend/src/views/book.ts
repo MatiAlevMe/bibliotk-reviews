@@ -27,13 +27,15 @@ export async function bookView(container: HTMLElement): Promise<void> {
 
   async function renderBookInfo(target: HTMLElement, book: Book): Promise<void> {
     try {
-      const [bookRes, reviewsRes, fraudRes] = await Promise.all([
+      const [bookRes, reviewsRes, fraudRes, userRes] = await Promise.all([
         api.book(book.id),
         api.bookReviews(book.id, false),
         api.fraudCheck(book.id),
+        api.user(actor.userId),
       ]);
       const fullBook = bookRes.book;
       const reviews = reviewsRes.bookReviews;
+      const actorBanned = !!userRes.user?.banned;
       target.innerHTML = "";
 
       const info = el("div", { class: "book-info" });
@@ -78,9 +80,13 @@ export async function bookView(container: HTMLElement): Promise<void> {
         target.append(await hiddenReviewsPane(book.id, book.authorName, actor));
       }
 
-      const alreadyReviewed = reviews.some((r) => r.user?.name === actor.userName);
-      target.append(addReviewForm(book.id, actor.userId, actor.userName, alreadyReviewed, () =>
-        renderBookInfo(target, book)));
+      if (actorBanned) {
+        target.append(banNotice());
+      } else {
+        const alreadyReviewed = reviews.some((r) => r.user?.name === actor.userName);
+        target.append(addReviewForm(book.id, actor.userId, actor.userName, alreadyReviewed, () =>
+          renderBookInfo(target, book)));
+      }
     } catch (err) {
       renderError(target, err);
     }
@@ -114,17 +120,18 @@ function pct(v: number | null | undefined): string {
   return v == null ? "—" : `${(v * 100).toFixed(0)}%`;
 }
 
-function reviewItem(r: Review, actor: { userName: string }, refresh: () => Promise<void>): HTMLElement {
+function reviewItem(r: Review, actor: { role: string; userName: string }, refresh: () => Promise<void>): HTMLElement {
   const li = el("li", {}, `${"★".repeat(r.rating)} — ${r.user?.name ?? "?"}`);
   if (r.body) li.append(el("div", { class: "muted" }, r.body));
   if (r.hidden) li.append(el("span", { class: "badge high" }, "oculta"));
 
   const isMine = r.user?.name === actor.userName;
+  const actions = el("div", { class: "actions", style: "margin:6px 0;" });
+
   if (isMine && !r.hidden) {
     const editBtn = el("button", { type: "button", class: "btn small" }, "Editar");
     const delBtn = el("button", { type: "button", class: "btn small danger" }, "Eliminar");
-    const actions = el("div", { class: "actions", style: "margin:6px 0;" }, editBtn, delBtn);
-    li.append(actions);
+    actions.append(editBtn, delBtn);
 
     editBtn.addEventListener("click", () => {
       li.innerHTML = "";
@@ -139,7 +146,29 @@ function reviewItem(r: Review, actor: { userName: string }, refresh: () => Promi
       if (res.deleteReview) await refresh();
     });
   }
+
+  if (actor.role === "admin" && !r.hidden) {
+    const hideBtn = el("button", { type: "button", class: "btn small danger" }, "Ocultar (moderación)");
+    hideBtn.addEventListener("click", async () => {
+      const reason = prompt("Motivo para ocultar esta reseña:", "Contenido inapropiado");
+      if (!reason) return;
+      const res = await api.hideReview({ id: r.id, reason });
+      if (res.hideReview) await refresh();
+    });
+    actions.append(hideBtn);
+  }
+
+  if (actions.childElementCount > 0) li.append(actions);
   return li;
+}
+
+function banNotice(): HTMLElement {
+  return card("Tu cuenta está baneada", el("p", { class: "muted" },
+    "No podés crear ni editar reseñas mientras estés baneado. Tus reseñas existentes quedaron ocultas y no cuentan para los promedios. ",
+    "Escribí a ",
+    el("strong", {}, "soporte@bibliotk.com"),
+    " si creés que es un error."
+  ));
 }
 
 function editReviewForm(r: Review, userName: string, cancel: () => void, refresh: () => Promise<void>): HTMLElement {
@@ -204,14 +233,25 @@ async function hiddenReviewsPane(bookId: string, authorName: string, actor: { ro
       } else {
         const list = el("ul", { class: "review-list" });
         for (const h of m.hiddenReviews) {
-          list.append(
-            el("li", {},
-              el("strong", {}, `${"★".repeat(h.rating)} ${h.userName}`),
-              h.banReason
-                ? el("div", { class: "muted" }, `Motivo de moderación: ${h.banReason}`)
-                : el("div", { class: "muted" }, "Sin motivo registrado")
-            )
+          const li = el("li", {},
+            el("strong", {}, `${"★".repeat(h.rating)} ${h.userName}`),
+            h.banReason
+              ? el("div", { class: "muted" }, `Motivo de moderación: ${h.banReason}`)
+              : el("div", { class: "muted" }, "Sin motivo registrado")
           );
+          if (actor.role === "admin") {
+            const showBtn = el("button", { type: "button", class: "btn small" }, "Mostrar (restaurar)");
+            showBtn.addEventListener("click", async () => {
+              const res = await api.showReview(h.id);
+              if (res.showReview) {
+                toggle.textContent = "Ver reseñas ocultas por moderación";
+                content.innerHTML = "";
+                toggle.click();
+              }
+            });
+            li.append(el("div", { class: "actions", style: "margin:6px 0;" }, showBtn));
+          }
+          list.append(li);
         }
         content.append(
           el("p", { class: "muted" }, `${m.hiddenCount} reseña(s) ocultas en «${m.title}».`),
