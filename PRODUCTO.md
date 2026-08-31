@@ -43,7 +43,7 @@ El autor puede consultar sus notificaciones via query `notifications(userId:)`.
 
 **Decisión: Las reseñas NO desaparecen, quedan `hidden: true`.**
 
-- El usuario que la escribió es **notificado** (un `ModerationNotification` al baneado por cada libro afectado) de que su reseña quedó oculta por moderación y el motivo — en la UI, va a "Sobre tus reseñas" en la home (ver `PRODUCTO.md` demo).
+- El usuario que la escribió es **notificado** (un `ModerationNotification` al baneado por cada libro afectado) de que su reseña quedó oculta por moderación y el motivo — en la UI, va a "Sobre tus reseñas" en la home (ver guía **`docs/PRUEBAS.md` › Lector**).
 - Soporte puede ver reseñas ocultas con el motivo via query `moderationStatus(bookId:)`
 - No hay tickets de "¿dónde está mi reseña?" porque técnicamente no desaparece y además el afectado recibe aviso
 
