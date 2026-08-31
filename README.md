@@ -183,7 +183,8 @@ npm run dev        # dev server en :5173, proxy a :3000
 
 ### Deploy a Vercel
 
-El demo frontend incluye `frontend/vercel.json` y soporte para `VITE_GRAPHQL_ENDPOINT`:
+- **URL en vivo:** [https://bibliotk-reviews.vercel.app](https://bibliotk-reviews.vercel.app)
+- Configuración en `frontend/vercel.json` con soporte para `VITE_GRAPHQL_ENDPOINT`.
 
 ```bash
 # Desde el root o importando la carpeta frontend/ en Vercel:
