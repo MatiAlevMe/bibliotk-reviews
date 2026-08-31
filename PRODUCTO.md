@@ -43,9 +43,9 @@ El autor puede consultar sus notificaciones via query `notifications(userId:)`.
 
 **Decisión: Las reseñas NO desaparecen, quedan `hidden: true`.**
 
-- El usuario que escribió la reseña ve en su perfil: "Tu reseña está ocultada por moderación"
+- El usuario que la escribió es **notificado** (un `ModerationNotification` al baneado por cada libro afectado) de que su reseña quedó oculta por moderación y el motivo — en la UI, va a "Sobre tus reseñas" en la home (ver `PRODUCTO.md` demo).
 - Soporte puede ver reseñas ocultas con el motivo via query `moderationStatus(bookId:)`
-- No hay tickets de "¿dónde está mi reseña?" porque técnicamente no desaparece
+- No hay tickets de "¿dónde está mi reseña?" porque técnicamente no desaparece y además el afectado recibe aviso
 
 **Por qué esta decisión:** La alternativa (borrar la reseña) crea un黑洞 de información. El usuario no sabe qué pasó, soporte no puede responder, y el autor no sabe por qué bajó el promedio. Con `hidden: true` todos los actores tienen visibilidad.
 
@@ -53,10 +53,17 @@ El autor puede consultar sus notificaciones via query `notifications(userId:)`.
 
 **Decisión: 3 métricas definidas + rake task de backfill.**
 
-**Métricas (definidas, no implementadas):**
+**Métricas (definidas + implementadas como escaneo `metrics:scan`, sin pipeline de eventos):**
 1. Reviews/min por libro → alerta si >50 en 1 hora → Moderación
 2. Average delta por libro → alerta si cambia >1.0 en 24h → Moderación
 3. Ratio banned/total reviewers → alerta si >5% en 7 días → Growth
+
+**Dónde se instrumentarían (punto de emisión en el código):**
+- **Reviews/min por libro:** en `Review#create`/`after_create` → emitir `review.created` con `book_id` a un contador con ventana de 1h (ej. redis INCR por minuto). El query de ráfaga ya vive en `AnomalyWatcher#check_review_bursts`.
+- **Average delta por libro:** en `Book#recalculate!` cuando `|new - previous| > 1.0` → emitir `book.average_delta` y correlacionar con el `ModerationNotification` creado en `User#ban!`. El query ya vive en `AnomalyWatcher#check_average_deltas`.
+- **Ratio banned/total reviewers:** en `User#ban!` → emitir `user.banned` con fecha, para contar baneos en los últimos 7 días vs. reviews creadas. El query ya vive en `AnomalyWatcher#check_banned_ratio`.
+
+Hoy los tres umbrales están implementados como escaneo **on-demand** (`bin/rake metrics:scan` → `AnomalyWatcher.scan`); pasarlos a un pipeline (Datadog/StatsD/Prometheus + scheduler `clockwork`/`whenever`) es el paso que los haría "en vivo". El brief pide definir dónde irían y quién las mira, no implementar el pipeline.
 
 **Backfill:** Rake task `db:seed:recalculate_all` que recalcula todos los promedios desde cero. Se ejecuta después de un ban masivo o periódicamente como insurance.
 
@@ -72,11 +79,11 @@ El autor puede consultar sus notificaciones via query `notifications(userId:)`.
 
 ## Métricas o eventos definidos
 
-| Métrica | Umbral | Acción | Quién la mira |
-|---------|--------|--------|---------------|
-| Reviews/min por libro | >50 en 1 hora | Alertar a moderación | Moderación |
-| Average delta por libro | >1.0 en 24h | Alertar a moderación | Moderación |
-| Ratio banned/total reviewers | >5% en 7 días | Alertar a growth | Growth |
+| Métrica | Umbral | Acción | Quién la mira | Punto de emisión en código |
+|---------|--------|--------|---------------|----------------------------|
+| Reviews/min por libro | >50 en 1 hora | Alertar a moderación | Moderación | `Review` create / `AnomalyWatcher#check_review_bursts` |
+| Average delta por libro | >1.0 en 24h | Alertar a moderación | Moderación | `Book#recalculate!` / `AnomalyWatcher#check_average_deltas` |
+| Ratio banned/total reviewers | >5% en 7 días | Alertar a growth | Growth | `User#ban!` / `AnomalyWatcher#check_banned_ratio` |
 
 ---
 
