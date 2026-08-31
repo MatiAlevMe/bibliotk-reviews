@@ -15,11 +15,13 @@ export interface GqlResult<T> {
   errors?: Array<{ message: string }>;
 }
 
+const GRAPHQL_ENDPOINT = (import.meta as unknown as { env?: { VITE_GRAPHQL_ENDPOINT?: string } }).env?.VITE_GRAPHQL_ENDPOINT || "/graphql";
+
 async function gql<T>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
-  const res = await fetch("/graphql", {
+  const res = await fetch(GRAPHQL_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables: variables ?? {} }),
