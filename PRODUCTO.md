@@ -104,5 +104,6 @@ El autor puede consultar sus notificaciones via query `notifications(userId:)`.
 Aunque el brief sólo pide backend, se agregó una capa de validación manual:
 
 - **Demo web interactivo** (`frontend/`, Vite + TypeScript): switcheo de roles (Admin/Autor/Lector) para probar cada decisión de producto (ban preview, ban/unban, reseñas ocultas, notificaciones) con cambios reales en la BD de desarrollo.
+- **Demo en Vercel (offline/mock):** el deploy estático (sin backend) resuelve las mismas features con datos **en memoria** (Diseño de `frontend/src/mock-client.ts`), persistiendo solo durante la sesión y con botón *"Reiniciar demo"* para volver a fábrica. Útil para presentar la UI sin depender de un server.
 - **Reset a fábrica** (`db:reset_demo`, dev/test-only): destruir y recrear la BD (drop + create + migrate + seed) para no quedarse "stuck" después de probar cosas destructivas.
 - **CI determinístico**: la BD de test se recrea en cada ejecución, por lo que borrar datos en una prueba no contamina la siguiente.

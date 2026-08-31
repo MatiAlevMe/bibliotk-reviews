@@ -102,6 +102,20 @@ El enunciado dice: "Si tu arquitectura está bien hecha esto es barato; si te sa
 
 **Beneficio:** `db:drop` no puede caerse con la BD a la que el server Rails está conectado (PostgreSQL rechaza `DROP` con conexiones activas). Correrlo como proceso CLI es determinístico y seguro. La vista Sistema del demo muestra el comando y un botón de copiar.
 
+**Matiz para Vercel:** este razonamiento aplica a **BD reales** (no se puede `DROP` con el server conectado). En la demo estática de Vercel no hay BD ni server conectado: el equivalente a `db:reset_demo` es el **botón "Reiniciar demo"**, que hace `resetMockData()` (vuelve el estado en memoria a los datos de fábrica de la sesión). El CLI `npm run db:reset` sigue siendo el camino para el backend real en localhost.
+
+### Demo en Vercel: modo offline/mock (Opción B, sin backend desplegado)
+
+**Contexto:** El deploy estático en Vercel no tiene un backend Rails detrás (no hay API en ningún cloud). La primera versión fallaba con `GraphQL HTTP 405`: el catch-all de Vercel (`/(.*)` → `index.html`) interceptaba el `POST /graphql`, y Vercel respondía `405 Method Not Allowed` porque un HTML estático rechaza POST.
+
+**Decisión:** Se descartó desplegar la API a Railway/Render/Fly.io por ahora (Opción A: requiere cuenta, setup y posible costo) y se implementó un **mock client** en `frontend/src/mock-client.ts` que resuelve todas las queries (top 50, libro, ban preview, moderación, fraude, logs, notificaciones) y mutations (crear reseña, banear/desbanear) sobre **datos en memoria**, replicando el seed real de Rails (admin, 5 autores, 50 lectores, 10 libros idénticos en títulos/autores).
+
+`MOCK_MODE` se activa **solo** cuando `VITE_GRAPHQL_ENDPOINT` está vacía **y** el build es de producción (Vercel), o se fuerza localmente con `VITE_GRAPHQL_ENDPOINT=mock`. En dev (`npm run dev`) nunca se activa: el proxy de Vite sigue enviando `/graphql` a `localhost:3000` (backend real).
+
+**Costo:** La demo de Vercel es una **simulación**: los datos mutados persisten solo durante la sesión (recargar la página los descarta). El sistema real solo se ejerce completo en localhost.
+
+**Beneficio:** Cero infraestructura y costo; la demo desplegada queda 100% funcional para presentar cada feature y decisión de producto (incluyendo ban preview, reseñas ocultas, notificaciones al autor y detección de fraude con un cluster 5★ de cuentas recientes en «El Aleph»); y documenta exactamente cómo re-conectar una API real en el futuro (setear `VITE_GRAPHQL_ENDPOINT`).
+
 ## Qué dejaría fuera si esto saliera mañana
 
 1. **Fraud detection:** Es un nice-to-have. El sistema core (promedios, baneos, notificaciones) es lo crítico.
