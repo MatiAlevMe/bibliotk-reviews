@@ -234,10 +234,8 @@ Tabla comparativa del brief (`docs/Prueba Product builder.md`) contra lo impleme
 | 8 | Moderación (ban con preview de impacto y razón) | Completado | `banPreview`, `banUser`, auditoría (`BanAuditLog`), UI Moderación |
 | 9 | Usuario baneado: reseñas ocultas `{hidden:true}`, nunca borradas | Completado | `User#ban!` + `after_save :hide_if_user_banned!`; queries públicas filtran `hidden:false` |
 | 10 | Desbanear restaura visibilidad y promedios | Completado | `unbanUser` |
-| 11 | Notificación al propio baneado | Completado (extra en code review) | `ban!` crea `ModerationNotification` por libro + card "Tu cuenta fue baneada" |
-| 12 | Medir las métricas definidas (instrumentación) | Documentado (pendiente de producción) | `PRODUCTO.md` — puntos de emisión definidos, faltan observability real |
-| 13 | Errores de validación GraphQL volcados | Trade-off aceptado | `DECISIONES.md` — integridad en el modelo, UI detecta duplicados |
-| 14 | Editar/eliminar visible en frontend | Completado (extra en code review) | Vista Libro, botones Editar/Eliminar |
+| 11 | Notificación al propio baneado | Completado | `ban!` crea `ModerationNotification` por libro + card "Tu cuenta fue baneada" |
+| 12 | Editar/eliminar visible en frontend | Completado | Vista Libro, botones Editar/Eliminar |
 | Bonus A | Reseñas 5★ de cuentas frescas a un mismo autor = revisión crítica | Completado | `fraudAuthorAnomaly` + UI Modulación |
 | Bonus B | Moderar reseña individual sin banear al autor | Completado | `hideReview`/`showReview` + `moderation_reason` |
 
