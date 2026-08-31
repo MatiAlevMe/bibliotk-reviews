@@ -169,29 +169,40 @@ mutation {
 
 ## Frontend DEMO
 
-Hay un demo interactivo en `frontend/` (SPA estática con **Vite + TypeScript + Vitest**) para switchear de rol y probar cada feature con cambios en la BD.
+Hay un demo interactivo en `frontend/` (SPA estática con **Vite + TypeScript + Vitest**) para switchear de rol y probar cada feature.
 
 ```bash
 cd frontend
 npm install
-npm run dev        # dev server en :5173, proxy a :3000
+npm run dev        # dev server en :5173, proxy a :3000 → backend REAL (necesita Rails corriendo)
 ```
 
 - **Role switching:** elegís Admin / Autor / Lector y ejecutás las acciones de ese rol.
-- **Top 50, Libro (CRUD reseñas + fraud check), Moderación (ban preview/ban/unban/auditoría), Panel autor (notificaciones + ocultas), Sistema (reset BD).**
+- **Top 50, Libro (crear reseña + fraud check), Moderación (ban preview/ban/unban/auditoría/autor anomalía), Panel autor (notificaciones + ocultas), Sistema (reset BD).**
 - Validación previa a navegador: `npm run typecheck` (tsc) y `npm test` (vitest).
+- **En localhost la demo usa el backend Rails real** (el proxy de Vite envía `/graphql` a `:3000`). Para forzar el modo mock local: `VITE_GRAPHQL_ENDPOINT=mock` en un `.env.local`.
 
 ### Deploy a Vercel
 
 - **URL en vivo:** [https://bibliotk-reviews.vercel.app](https://bibliotk-reviews.vercel.app)
 - Configuración en `frontend/vercel.json` con soporte para `VITE_GRAPHQL_ENDPOINT`.
 
+> [!IMPORTANT]
+> **El demo en Vercel corre en modo OFFLINE/MOCK.** No hay backend Rails desplegado, por lo que `VITE_GRAPHQL_ENDPOINT` no está definida y la app resuelve todas las queries y mutations con un client mock **en memoria durante tu sesión** (ver `frontend/src/mock-client.ts`). Eso significa:
+> - **No hay error 405** ni dependencia de servidores externos.
+> - Crear reseñas, banear/desbanear, etc. **persisten solo mientras no recargues la página**.
+> - Para **volver a fábrica** durante la sesión usá el botón **"Reiniciar demo"** (arriba a la derecha o en la vista Sistema).
+> - Para probar el **backend real** corré la demo en **localhost** (`npm run dev` + Rails en `:3000`) y reseteá con `npm run db:reset`.
+
 ```bash
 # Desde el root o importando la carpeta frontend/ en Vercel:
 # Root Directory: frontend
 # Build Command: npm run build
 # Output Directory: dist
-# Environment Variable (opcional): VITE_GRAPHQL_ENDPOINT=https://tu-api-rails.com/graphql
+#
+# Sin variables de entorno → la demo desplegada usa el modo mock/offline.
+# OPCIONAL — si querés conectar una API Rails desplegada (Railway/Render/Fly.io):
+# Environment Variable: VITE_GRAPHQL_ENDPOINT=https://tu-api-rails.com/graphql
 ```
 
 
@@ -199,11 +210,12 @@ npm run dev        # dev server en :5173, proxy a :3000
 
 | Ambiente | Dónde | Reset a fábrica | Demo |
 |----------|-------|------------------|------|
-| development | `localhost:3000` | `bin/rails db:reset_demo` | sí |
+| development | `localhost:3000` | `bin/rails db:reset_demo` (CLI) | sí, **backend real** |
 | test (CI/CD) | GitHub Actions, BD por ejecución | automático cada run | no |
-| production | deploy futuro | no | no |
+| Vercel demo (production) | `bibliotk-reviews.vercel.app` | **Botón "Reiniciar demo"** (mock en memoria, no toca BD) | sí, **modo mock/offline** |
+| producción real | deploy futuro | no | no |
 
-El reset de BD a fábrica en dev: `bin/rails db:reset_demo` (o `cd frontend && npm run db:reset`) — drop + create + migrate + seed. Solo dev/test; aborta en producción.
+El reset de BD real a fábrica en dev: `bin/rails db:reset_demo` (o `cd frontend && npm run db:reset`) — drop + create + migrate + seed. Solo dev/test; aborta en producción. En la **demo de Vercel** no hay BD: el botón "Reiniciar demo" devuelve el estado mock a los datos de fábrica de la sesión.
 
 ## CI/CD (GitHub Actions)
 

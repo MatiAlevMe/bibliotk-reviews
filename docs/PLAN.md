@@ -55,10 +55,20 @@ Estado de ejecución. Los hitos marcados están implementados; los hallazgos que
 - [x] Actualización de flags en `scan_ruby` (Brakeman) y compatibilidad con Node 22 LTS
 - [x] Saneamiento de scripts en `frontend/package.json` (`db:reset`)
 
+### Hito 7 — Demo Vercel Offline/Mock (Opción B, fix del 405) (✅ completado)
+- [x] Diagnóstico del `GraphQL HTTP 405`: el catch-all de Vercel interceptaba el `POST /graphql` y servía el HTML estático (405)
+- [x] Mock client en memoria (`frontend/src/mock-client.ts` + `mock-data.ts`) que replica el seed real de Rails: admin, 5 autores, 50 lectores (ids 7-56) y los 10 títulos reales
+- [x] `MOCK_MODE` corregido: se activa solo en build de producción sin endpoint (Vercel) o con `VITE_GRAPHQL_ENDPOINT=mock`; en dev usa el backend real vía proxy
+- [x] Queries mock: top 50, detalle de libro, reseñas, ban preview, moderación, notificaciones, fraud check, fraud author anomaly, ban logs
+- [x] Mutations mock: crear/editar/eliminar reseña, banear/desbanear — persisten en la sesión y recalculan los aggregates del libro
+- [x] Notificaciones a autores: al banear, se notifican a los autores de los libros afectados (igual que `User#ban!` real)
+- [x] Cluster 5★ "recientes" en «El Aleph» → la detección de fraude de la demo muestra un caso positivo
+- [x] Botones **"Reiniciar demo"** (topbar y vista Sistema) que dejan el estado mock en fábrica — equivalente en Vercel a `db:reset_demo`
+- [x] Docs/README/DECISIONES/PRODUCTO actualizados (Vercel = mock offline; localhost = backend real)
+- [x] Tests de Vitest para `mockApi` (top books, crear reseña + recálculo, banear + recálculo)
+
 ### Finding / Pendiente
-> Inventario completo y registro histórico en **[docs/CONTINUACION.md](CONTINUACION.md)**.
-- La **demo no genera el libro de 500k reseñas** desde la UI (requiere `db:seed:large_scale`); el benchmark se corre por CLI.
-- El **reset de BD desde la UI** no usa endpoint (no se puede `DROP` con el server conectado); se hace vía `npm run db:reset` (CLI dentro de WSL). Ver `DECISIONES.md`.
+> Ver también sección **[Continuación y pendientes](#continuación-y-pendientes)** más abajo (registro histórico consolidado de CONTINUACION.md).
 
 ## Stack
 
@@ -302,3 +312,102 @@ bibliotk-reviews/
 ├── PRODUCTO.md
 └── README.md
 ```
+
+---
+
+# Continuación y pendientes
+
+> Documento vivo consolidado (absorbido de `docs/CONTINUACION.md`, que fue eliminado) con todo lo que quedó pendiente, detectado o diferido. Cada entrada tiene estado, impacto, causa raíz y propuesta de resolución.
+>
+> Convención de estado: `[✅ resuelto]`, `[⏳ pendiente]`, `[🟡 bajo prioridad]`, `[📌 decisión tomada]`.
+
+## 📌 Plan de ejecución completo (histórico)
+
+> Estado operativo al momento de escribir: la demo **no era funcional** en Windows porque las gems nativas de Rails (puma, psych, date, etc.) no compilaban en el Ruby de Windows (`C:\Ruby33`) y Postgres no estaba instalado. Se decidió **mover el entorno de ejecución a WSL (Ubuntu 24.04)**. Esta sección queda como registro histórico: el entorno WSL está operativo y la demo + CI funcionan.
+
+### Decisiones confirmadas (28/08/2026)
+- **Backend y tests se corren en WSL** (Ubuntu 24.04, WSL2). Ruby 3.3.1 vía **rbenv**, solo project-local.
+- **Rechazado el setup Docker dev.** El `Dockerfile` de producción NO se toca salvo lo ya commiteado (ARG RUBY_VERSION → 3.3.1).
+- **`db:reset` de la demo corre vía WSL**: `wsl -e bash -lc 'cd /home/eva2a/EVA/repos/bibliotk-reviews && bin/rails db:reset_demo'`.
+- **`.gitattributes`**: `eol=lf` para todo texto (binstubs `bin/*` corren bien en Linux/contenedores).
+- **`fraudAuthorAnomaly` (#10)** se expone como query GraphQL (visible en la demo), no solo rake.
+
+### Fase A — Setup del entorno WSL (backend + tests) ([✅ resuelto])
+1. Clonar limpio en WSL desde el repo (SSH WSL tiene git, gcc, make, curl, nvm/node v18).
+2. Ruby 3.3.1 project-local (`rbenv install 3.3.1`). `.ruby-version` activa 3.3.1 solo dentro del folder.
+3. PostgreSQL: instalar, crear rol y DBs `bibliotk_reviews_development` + `bibliotk_reviews_test`.
+4. Dependencias + BD: `bundle install`, `bin/rails db:create db:migrate db:seed`.
+5. Verificar: `bundle exec rspec` (baseline), `bin/rubocop -f github`, `bin/brakeman --no-pager`.
+
+### Fase B — Demo funcional de punta a punta ([✅ resuelto])
+- Backend en WSL: `bin/rails server -b 0.0.0.0 -p 3000` → alcanzable en `localhost:3000`.
+- Frontend: `cd frontend && npm install && npm run dev` → SPA en `:5173` con proxy `/graphql → localhost:3000`.
+- Reset a fábrica: `cd frontend && npm run db:reset` (vía WSL).
+
+### Fase C — Fixes de código ([✅ resuelto])
+1. **#2+#3 — Precisión del ban preview + spec de equivalencia** (`ad25155`): migración `AddReviewsSumAndCountRawToBooks` (`reviews_sum`, `reviews_count_raw`); `Book#recalculate!` los mantiene; `BanImpactAnalyzer` usa `reviews_sum` exacto; spec de equivalencia.
+2. **#5 — Redundancia `includes(:book).joins(:book)`** (`f0e7150`): simplificado a `reviews.includes(:book)`.
+3. **#4 — Concurrencia** (`b2e3e47`): rescata `ActiveRecord::RecordNotUnique` en threads.
+4. **#10 — `fraudAuthorAnomaly`** (`c764353`): query GraphQL + tipo + integración demo.
+5. **#9 — 3 métricas de anomalías** (`7229545`): `AnomalyWatcher`, rake `metrics:scan`, specs.
+
+### Fase E — Push / PR
+- Rama feature, commits atómicos por fase, PR → checks CI → merge a `main` (protegida).
+
+## Hallazgos y estado (consolidado de CONTINUACION.md)
+
+### 1. Fluir cambios a `main` (protección habilitada) `[📌 decisión tomada]`
+Con la protección de `main` no se puede push directo salvo por PR o bypass de owner. El owner tiene bypass habilitado y el push directo aplica ("Bypassed rule violations"). Recomendado: rama + PR con los checks (`test`, `lint`, `scan_ruby`, `frontend`).
+
+### 2. Precisión del ban preview (BanImpactAnalyzer) `[✅ resuelto]` — `ad25155`
+Reconstruía el total desde `cached_average` (redondeado), desviándose ±0.1. Se usa `reviews_sum` exacto.
+
+### 3. Spec del ban preview no verifica equivalencia `[✅ resuelto]` — `ad25155`
+Agregado spec que valida que `projected_average` coincide con `user.ban!` + `recalculate!`.
+
+### 4. Ruido en el spec de concurrencia `[✅ resuelto]` — `b2e3e47`
+`concurrency_spec.rb` rescata `ActiveRecord::RecordNotUnique`/`RecordInvalid` de forma limpia.
+
+### 5. Redundancia `includes(:book).joins(:book)` `[✅ resuelto]` — `f0e7150`
+
+### 6. Configuración manual de GitHub (no automatizable) `[📌 decisión tomada]`
+
+### 7. Demo: libro de 500k reseñas no se genera desde la UI `[📌 decisión tomada]`
+Requiere `db:seed:large_scale`; el benchmark se corre por CLI. `⏳ pendiente` si se quisiera expuesto en la UI.
+
+### 8. Reset de BD desde la UI `[📌 decisión tomada]`
+No usa endpoint (no se puede `DROP` con el server conectado); se hace vía `npm run db:reset` (CLI). En Vercel (sin BD) el equivalente es el botón **"Reiniciar demo"** (mock en memoria). Ver `DECISIONES.md`.
+
+### 9. Métricas "Que no se vuelva a repetir" `[✅ resuelto]` — `7229545`
+Implementado `AnomalyWatcher` y rake `metrics:scan`: reviews/min >50 en 1h, average delta >1.0 en 24h, ratio de baneados >5% en 7 días.
+
+### 10. FraudDetector: anomalía de autor expuesta `[✅ resuelto]` — `c764353`
+Query `fraudAuthorAnomaly(authorName: String!)` en `Types::QueryType`, soportada en la demo (vista Moderación) y con tests RSpec.
+
+### 11. Notificación al autor con IA (opcional) `[🟡 bajo prioridad]`
+`PRODUCTO.md` define texto estático (más barato y confiable). La opción de generar con Gemini free quedó como futuro opcional: servicio `NotificationCopyGenerator` con fallback al texto estático.
+
+### 12. Redondeo half-up en specs `[✅ resuelto]` — `35be83e`
+Reemplazados los specs vacíos `3.35`/`2.249` por casos deterministas: `3.25→3.3`, `3.35→3.4`, `2.24→2.2`.
+
+### 13. Error `GraphQL HTTP 405` en Vercel `[✅ resuelto]` (Hito 7)
+El catch-all de Vercel interceptaba el `POST /graphql` y servía el HTML → 405. Resuelto con el modo offline/mock (ver Hito 7 y `DECISIONES.md`).
+
+### 14. Fallo Brakeman EOLRails en CI `[✅ resuelto]`
+Configurado `config/brakeman.ignore` (fingerprint SHA-256 exacto) y `ci.yml` usa `-i config/brakeman.ignore`.
+
+### 15. Aislamiento de datos en AnomalyWatcher specs `[✅ resuelto]`
+Limpieza en `spec/services/anomaly_watcher_spec.rb` para que las métricas basadas en tiempo no sean afectadas por datos residuales del seed.
+
+### 16. Deploy en Vercel del Frontend DEMO `[✅ resuelto]`
+Se agregó `frontend/vercel.json` + soporte `VITE_GRAPHQL_ENDPOINT`; luego evolucionó a modo offline/mock (Hito 7).
+
+## Cambios que requieren migración
+
+| Cambio | ¿Migración? | Relacionado con |
+|--------|-------------|-----------------|
+| Guardar `reviews_sum` / stats exactas en `books` | Sí (hecha: `AddReviewsSumAndCountRawToBooks`) | Punto 2 (precisión del preview) |
+| Alertas/Scheduler para métricas | No (solo servicio/job) | Punto 9 |
+| Endpoint reset desde UI | No (se resolvió con botón de mock en Vercel; CLI en dev) | Punto 8 |
+
+Si se agrega una migración, **regenerar y commitear `db/schema.rb`** (regla de `AGENTS.md`).
