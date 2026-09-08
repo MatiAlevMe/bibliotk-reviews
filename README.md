@@ -220,7 +220,7 @@ npm run dev        # dev server en :5173, proxy a :3000 → backend REAL (necesi
 
 ## Requerimiento vs. completado
 
-Tabla comparativa del brief (`docs/Prueba Product builder.md`) contra lo implementado. Estado: **completado** (requerimientos originales), **extra** (agregados de producto que el brief pedía como resolver) y **bonus** (funcionalidades extra pedidas a entregar).
+Tabla comparativa del brief contra lo implementado. Estado: **completado** (requerimientos originales), **extra** (agregados de producto que el brief pedía como resolver) y **bonus** (funcionalidades extra pedidas a entregar).
 
 | # | Requerimiento (brief) | Estado | Dónde |
 |---|-----------------------|--------|-------|
