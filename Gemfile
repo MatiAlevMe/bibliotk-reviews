@@ -27,7 +27,7 @@ gem "graphql", "~> 2.3"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri mswin64 mingw x64_mingw jruby ], require: "debug/prelude"
-  gem "rspec-rails", "~> 7.0"
+  gem "rspec-rails", "~> 8.0"
   gem "factory_bot_rails"
   gem "faker"
   gem "shoulda-matchers", "~> 6.0"
