@@ -29,3 +29,6 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+
+# Credentials file removed; regenerate with a new master key if needed.
+/config/credentials.yml.enc
