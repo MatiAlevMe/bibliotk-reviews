@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  RUBY_VERSION: ${{ vars.RUBY_VERSION || '3.3.1' }}
+  RUBY_VERSION: '3.3.14'
 
 jobs:
   scan_ruby:

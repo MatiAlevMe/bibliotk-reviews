@@ -4,7 +4,7 @@ Motor de calificación para Bibliotk — plataforma de reseñas de libros.
 
 ## Requisitos
 
-- Ruby 3.3.1 (`.ruby-version`)
+- Ruby 3.3.14 (`.ruby-version`)
 - PostgreSQL 16+
 - Rails 7.2
 - Node 22+ (para el frontend demo)
